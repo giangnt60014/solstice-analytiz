@@ -473,13 +473,18 @@ const YT_CODES = new Set([
 ]);
 
 const QUEST_FALLBACK = [
-  { code:'S2_EXPONENT_YIELD_USX_JUN26',  label:'YT USX Jun26',  mult:30, mint:'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s', type:'YT',   matTs: YT_MAT_TS },
-  { code:'S2_EXPONENT_YIELD_EUSX_JUN26', label:'YT eUSX Jun26', mult:15, mint:'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw', type:'YT',   matTs: YT_MAT_TS },
-  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'YT USX Sep26',  mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT',   matTs: YT_MAT_TS_SEP },
-  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'YT eUSX Sep26', mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT',   matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_YIELD_USX_JUN26',  label:'Farm Variable USX Yield (Exponent 1Jun26)',    mult:30, mint:'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s', type:'YT',   matTs: YT_MAT_TS },
+  { code:'S2_EXPONENT_YIELD_EUSX_JUN26', label:'Farm Variable eUSX Yield (Exponent 1Jun26)',   mult:15, mint:'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw', type:'YT',   matTs: YT_MAT_TS },
+  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'Farm Variable USX Yield (Exponent 16Sep26)',   mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT',   matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'Farm Variable eUSX Yield (Exponent 16Sep26)',  mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT',   matTs: YT_MAT_TS_SEP },
   { code:'S2_HOLD_USX_DAILY',            label:'Hold USX',      mult:10, mint:'6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG', type:'HOLD', matTs: null },
   { code:'S2_HOLD_EUSX_DAILY',           label:'Hold eUSX',     mult:2,  mint:'3ThdFZQKM6kRyVGLG48kaPg5TRMhYMKY1iCRa9xop1WC', type:'HOLD', matTs: null },
   { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault', mult:10, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP',   matTs: null },
+  // Exponent LP quests — Solstice API returns mint=null; we patch LP mint addresses here
+  { code:'S2_EXPONENT_LP_USX_JUN26',     label:'Supply USX Liquidity (Exponent 1Jun26)',       mult:20, mint:'BR2JKV9gPoJfX8A8DkFmo2yNQKCeGipg33oYaZ4EmjbW', type:'LP', matTs: YT_MAT_TS },
+  { code:'S2_EXPONENT_LP_EUSX_JUN26',    label:'Supply eUSX Liquidity (Exponent 1Jun26)',      mult:10, mint:'4GT6g1iKx2TyYCkwt1tERkReQjSUuVE7uh14M5W8v2nn',  type:'LP', matTs: YT_MAT_TS },
+  { code:'S2_EXPONENT_LP_USX_SEP26',     label:'Supply USX Liquidity (Exponent 16Sep26)',      mult:20, mint:'UPvchSL3aVFwaqVEQKJ3msSLfhKJe468DBPJYgWLNw5',   type:'LP', matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_LP_EUSX_SEP26',    label:'Supply eUSX Liquidity (Exponent 16Sep26)',     mult:10, mint:'72AitxuVjN9LF88jMEMKX6NRqTufeJ9XRdtkj96UuKT2',  type:'LP', matTs: YT_MAT_TS_SEP },
 ];
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -513,7 +518,11 @@ async function loadQuests() {
   const CK = 'analytiq_quests_v2';
   try {
     const c = JSON.parse(localStorage.getItem(CK) || 'null');
-    if (c && c.date === utcDate()) { buildQuestMap(c.quests); return; }
+    if (c && c.date === utcDate()) {
+      buildQuestMap(c.quests);
+      supplementLpQuests();
+      return;
+    }
   } catch {}
   try {
     const res = await fetch('https://app.solstice.finance/api/flares/quests');
@@ -531,10 +540,20 @@ async function loadQuests() {
       }
       try { localStorage.setItem(CK, JSON.stringify({ date: utcDate(), quests: out })); } catch {}
       buildQuestMap(out);
+      supplementLpQuests();
       return;
     }
   } catch {}
   buildQuestMap(QUEST_FALLBACK);
+  // QUEST_FALLBACK already includes LP quests with mints
+}
+
+// Add any QUEST_FALLBACK entries that aren't in questMap yet (patches LP quests
+// which the Solstice API returns with mint=null and we have mint addresses for).
+function supplementLpQuests() {
+  for (const q of QUEST_FALLBACK) {
+    if (!questMap[q.code]) buildQuestMap([q]);
+  }
 }
 
 function buildQuestMap(arr) {
@@ -602,9 +621,13 @@ async function fetchOnChain(addr) {
 }
 
 // ── On-chain historical walker ────────────────────────────────────────────────
-const SEASON_START_TS  = 1764547200;           // Dec 1 2025 00:00 UTC
-const OC_CACHE_PFX     = 'analytiq_oc_v2_';
-const OC_CACHE_TTL     = 4 * 3600;            // 4 hours
+const SEASON_START_TS  = 1776056400;           // Apr 13 2026 05:00 UTC (Season 2 actual start)
+const OC_CACHE_PFX     = 'analytiq_oc_v4_';   // v4: Exponent farm positions
+const OC_CACHE_TTL     = 3600;                 // 1 hour
+const TOKEN_2022_PROG  = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+const EXPONENT_PROG    = 'ExponentnaRg3CQbW6dqQNZKXp7gtZ9DGMp1cwC4HAS7';
+// Higher = preferred when multiple quests share the same mint
+const QUEST_TYPE_PRI   = { YT: 5, HOLD: 4, LP: 3, LEND: 2, BORROW: 1, UNKNOWN: 0 };
 
 function setLoadingMsg(main, sub = '') {
   const m = document.getElementById('loading-msg');
@@ -663,10 +686,8 @@ async function buildBalanceTimeline(rpcUrl, tokenAccountPubkey) {
     return [{ time: SEASON_START_TS, balance: 0 }, { time: now, balance: 0 }];
   }
 
-  // Sort oldest → newest
   sigs.sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
 
-  // Fetch txns in parallel batches of 20
   const BATCH = 20;
   const events = [];
   let balAtSeasonStart = 0;
@@ -684,7 +705,7 @@ async function buildBalanceTimeline(rpcUrl, tokenAccountPubkey) {
       const bal = getPostBal(tx, tokenAccountPubkey);
       if (bal === null) continue;
       if (tx.blockTime < SEASON_START_TS) {
-        balAtSeasonStart = bal; // last balance before season = opening balance
+        balAtSeasonStart = bal;
       } else {
         events.push({ time: tx.blockTime, balance: bal });
       }
@@ -698,8 +719,24 @@ async function buildBalanceTimeline(rpcUrl, tokenAccountPubkey) {
   return [
     { time: SEASON_START_TS, balance: balAtSeasonStart },
     ...sorted,
-    { time: now, balance: lastBal }, // close timeline at current moment
+    { time: now, balance: lastBal },
   ];
+}
+
+// Cap a timeline at a maturity timestamp (don't earn flares after YT expires)
+function capTimelineAtTs(timeline, capTs) {
+  const out = [];
+  for (const pt of timeline) {
+    if (pt.time <= capTs) { out.push(pt); }
+    else {
+      const prev = out.length ? out[out.length - 1].balance : 0;
+      out.push({ time: capTs, balance: prev });
+      break;
+    }
+  }
+  if (!out.length) return [{ time: SEASON_START_TS, balance: 0 }, { time: capTs, balance: 0 }];
+  if (out[out.length - 1].time < capTs) out.push({ time: capTs, balance: out[out.length - 1].balance });
+  return out;
 }
 
 // Σ balance_i × multiplier × days_i across all periods
@@ -712,37 +749,329 @@ function integrateFlares(timeline, multiplier) {
   return total;
 }
 
-// Main walker: returns { totalFlares, totalDaily, positions, fromCache }
+// ── Base58 helpers (used for Exponent farm scan) ──────────────────────────────
+const B58_ALPHA = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function b58Decode32(s) {
+  const out = new Uint8Array(32);
+  let n = 0n;
+  for (const c of s) n = n * 58n + BigInt(B58_ALPHA.indexOf(c));
+  for (let i = 31; i >= 0; i--) { out[i] = Number(n & 0xffn); n >>= 8n; }
+  return out;
+}
+function b58Encode32(bytes) {
+  let n = 0n;
+  for (const b of bytes) n = n * 256n + BigInt(b);
+  let s = '';
+  while (n > 0n) { s = B58_ALPHA[Number(n % 58n)] + s; n /= 58n; }
+  for (const b of bytes) { if (b !== 0) break; s = '1' + s; }
+  return s;
+}
+function readU64LE(bytes, offset) {
+  let lo = 0, hi = 0;
+  for (let i = 0; i < 4; i++) lo += bytes[offset + i] * (256 ** i);
+  for (let i = 0; i < 4; i++) hi += bytes[offset + 4 + i] * (256 ** i);
+  return hi * 4294967296 + lo;
+}
+
+// ── Exponent Finance: scan staked YT positions (YieldTokenPosition) ───────────
+// Layout: disc[0-7] | owner[8-39] | vault[40-71] | yt_balance_u64[72-79]
+// Vault layout: disc[0-7] | ... | mint_yt[72-103]
+async function fetchExponentYtFarmPositions(addr, rpcUrl, questList) {
+  // Build YT mint → quest map
+  const mintYtToQuest = {};
+  for (const q of questList) {
+    if (q.mint && q.type === 'YT') mintYtToQuest[q.mint] = q;
+  }
+  if (!Object.keys(mintYtToQuest).length) return [];
+
+  const ownerBytes = b58Decode32(addr);
+  // YieldTokenPosition discriminator
+  const disc = new Uint8Array([0xe3, 0x5c, 0x92, 0x31, 0x1d, 0x55, 0x47, 0x5e]);
+  const toB64 = arr => btoa(String.fromCharCode(...arr));
+
+  const raw = await rpcPost(rpcUrl, 'getProgramAccounts', [
+    EXPONENT_PROG,
+    {
+      encoding: 'base64',
+      filters: [
+        { memcmp: { offset: 0, bytes: toB64(disc),        encoding: 'base64' } },
+        { memcmp: { offset: 8, bytes: toB64(ownerBytes),  encoding: 'base64' } },
+      ],
+    },
+  ]).catch(() => []);
+
+  if (!raw?.length) return [];
+
+  // Decode each position (save pubkey for stake-time lookup)
+  const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const decoded = raw.map(a => {
+    const data = fromB64(a.account.data[0]);
+    return { pubkey: a.pubkey, vault: b58Encode32(data.slice(40, 72)), ytBalance: readU64LE(data, 72) };
+  }).filter(p => p.ytBalance > 0);
+
+  if (!decoded.length) return [];
+
+  // Batch-fetch vault accounts to read mint_yt at offset 72
+  const uniqueVaults = [...new Set(decoded.map(d => d.vault))];
+  const vaultRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
+    uniqueVaults, { encoding: 'base64' },
+  ]).catch(() => null);
+
+  const vaultToMintYt = {};
+  if (vaultRes?.value) {
+    uniqueVaults.forEach((v, i) => {
+      const acc = vaultRes.value[i];
+      if (acc?.data) {
+        const vd = fromB64(acc.data[0]);
+        if (vd.length >= 104) vaultToMintYt[v] = b58Encode32(vd.slice(72, 104));
+      }
+    });
+  }
+
+  // For each position, find the stake start time via the first signature on the
+  // YieldTokenPosition account. This avoids over-counting flares when the user
+  // staked well after season start.
+  const stakeTs = {};
+  await Promise.all(decoded.map(async ({ pubkey }) => {
+    try {
+      // Walk backward to find the oldest signature (= account creation = stake time)
+      let before;
+      let oldest = null;
+      while (true) {
+        const opts = { limit: 100, commitment: 'confirmed' };
+        if (before) opts.before = before;
+        const page = await rpcPost(rpcUrl, 'getSignaturesForAddress', [pubkey, opts]).catch(() => []);
+        if (!page?.length) break;
+        const last = page[page.length - 1];
+        if (last.blockTime) oldest = last.blockTime;
+        if (page.length < 100) break;
+        if (oldest && oldest < SEASON_START_TS - 86400) break; // far before season, stop
+        before = last.signature;
+      }
+      if (oldest) stakeTs[pubkey] = Math.max(oldest, SEASON_START_TS);
+    } catch {}
+  }));
+
+  const positions = [];
+  const nowTs = Math.floor(Date.now() / 1000);
+
+  for (const { pubkey, vault, ytBalance } of decoded) {
+    const mintYt = vaultToMintYt[vault];
+    if (!mintYt) continue;
+    const quest = mintYtToQuest[mintYt];
+    if (!quest) continue;
+
+    const balance   = ytBalance / 1e6;
+    const capTs     = quest.matTs ? Math.min(quest.matTs, nowTs) : nowTs;
+    const startTs   = stakeTs[pubkey] ?? SEASON_START_TS;  // fallback to season start
+    const days      = Math.max(0, (capTs - startTs) / 86400);
+
+    positions.push({
+      code:      quest.code,
+      label:     quest.label,
+      type:      quest.type,
+      mult:      quest.mult,
+      matTs:     quest.matTs,
+      daily:     balance * quest.mult,
+      balance,
+      balSource: 'on-chain',
+      flares:    balance * quest.mult * days,
+    });
+  }
+  return positions;
+}
+
+// ── Exponent Finance: scan staked LP positions (LpPosition) ──────────────────
+// Layout: disc[0-7] | owner[8-39] | market[40-71] | lp_balance_u64[72-79]
+// To map market → quest, we read the market's vault and vault's mint_yt,
+// then look up the LP quest code (S2_EXPONENT_LP_*) via a static vault→LP-quest map.
+const EXP_YT_TO_LP_QUEST = {
+  'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s': 'S2_EXPONENT_LP_USX_JUN26',
+  'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw': 'S2_EXPONENT_LP_EUSX_JUN26',
+  '47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS': 'S2_EXPONENT_LP_USX_SEP26',
+  'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F': 'S2_EXPONENT_LP_EUSX_SEP26',
+};
+// MarketTwo layout: disc[0-7] | ... | vault[104-135] | lp_mint[136-167]
+// We read vault from market (offset 104) and then mint_yt from vault (offset 72).
+async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
+  // Build LP quest code → quest object
+  const lpQuestByCode = {};
+  for (const q of questList) {
+    if (q.type === 'LP' && q.code.startsWith('S2_EXPONENT_LP_')) lpQuestByCode[q.code] = q;
+  }
+  if (!Object.keys(lpQuestByCode).length) return [];
+
+  const ownerBytes = b58Decode32(addr);
+  const disc = new Uint8Array([0x69, 0xf1, 0x25, 0xc8, 0xe0, 0x02, 0xfc, 0x5a]);
+  const toB64 = arr => btoa(String.fromCharCode(...arr));
+  const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+  const raw = await rpcPost(rpcUrl, 'getProgramAccounts', [
+    EXPONENT_PROG,
+    {
+      encoding: 'base64',
+      filters: [
+        { memcmp: { offset: 0, bytes: toB64(disc),       encoding: 'base64' } },
+        { memcmp: { offset: 8, bytes: toB64(ownerBytes), encoding: 'base64' } },
+      ],
+    },
+  ]).catch(() => []);
+
+  if (!raw?.length) return [];
+
+  const decoded = raw.map(a => {
+    const data = fromB64(a.account.data[0]);
+    return { market: b58Encode32(data.slice(40, 72)), lpBalance: readU64LE(data, 72) };
+  }).filter(p => p.lpBalance > 0);
+
+  if (!decoded.length) return [];
+
+  // Read each market account to find vault pubkey (offset 104 in MarketTwo)
+  const uniqueMarkets = [...new Set(decoded.map(d => d.market))];
+  const marketRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
+    uniqueMarkets, { encoding: 'base64' },
+  ]).catch(() => null);
+
+  const marketToVault = {};
+  if (marketRes?.value) {
+    uniqueMarkets.forEach((m, i) => {
+      const acc = marketRes.value[i];
+      if (acc?.data) {
+        const md = fromB64(acc.data[0]);
+        if (md.length >= 136) marketToVault[m] = b58Encode32(md.slice(104, 136));
+      }
+    });
+  }
+
+  // Read vault accounts to get mint_yt
+  const uniqueVaults = [...new Set(Object.values(marketToVault))];
+  if (!uniqueVaults.length) return [];
+  const vaultRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
+    uniqueVaults, { encoding: 'base64' },
+  ]).catch(() => null);
+
+  const vaultToMintYt = {};
+  if (vaultRes?.value) {
+    uniqueVaults.forEach((v, i) => {
+      const acc = vaultRes.value[i];
+      if (acc?.data) {
+        const vd = fromB64(acc.data[0]);
+        if (vd.length >= 104) vaultToMintYt[v] = b58Encode32(vd.slice(72, 104));
+      }
+    });
+  }
+
+  const positions = [];
+  const nowTs = Math.floor(Date.now() / 1000);
+
+  for (const { market, lpBalance } of decoded) {
+    const vault  = marketToVault[market];
+    if (!vault) continue;
+    const mintYt = vaultToMintYt[vault];
+    if (!mintYt) continue;
+    const lpQuestCode = EXP_YT_TO_LP_QUEST[mintYt];
+    if (!lpQuestCode) continue;
+    const quest = lpQuestByCode[lpQuestCode];
+    if (!quest) continue;
+
+    const balance = lpBalance / 1e6;
+    const capTs  = quest.matTs ? Math.min(quest.matTs, nowTs) : nowTs;
+    const days   = Math.max(0, (capTs - SEASON_START_TS) / 86400);
+
+    positions.push({
+      code:      quest.code,
+      label:     quest.label,
+      type:      quest.type,
+      mult:      quest.mult,
+      matTs:     quest.matTs,
+      daily:     balance * quest.mult,
+      balance,
+      balSource: 'on-chain',
+      flares:    balance * quest.mult * days,
+    });
+  }
+  return positions;
+}
+
+// Main walker: returns { totalFlares, totalDaily, positions, cachedTs, fromCache }
 async function computeOnChainFlares(addr, rpcUrl, questList) {
   // Cache check
   const ck = OC_CACHE_PFX + addr;
   try {
     const c = JSON.parse(localStorage.getItem(ck) || 'null');
-    if (c && (Date.now() / 1000 - c.ts) < OC_CACHE_TTL) return { ...c.data, fromCache: true };
+    if (c && (Date.now() / 1000 - c.ts) < OC_CACHE_TTL) return { ...c.data, cachedTs: c.ts, fromCache: true };
   } catch {}
 
   setLoadingMsg('Reading token accounts…');
 
-  // Get all token accounts + pubkeys
-  const res = await rpcPost(rpcUrl, 'getTokenAccountsByOwner', [
-    addr, { programId: SPL_PROG }, { encoding: 'jsonParsed' },
+  // Build mintMap with type-priority (HOLD/YT preferred over LEND/BORROW for shared mints)
+  const mintMap = {};
+  for (const q of questList) {
+    if (!q.mint) continue;
+    const existing = mintMap[q.mint];
+    const np = QUEST_TYPE_PRI[q.type] ?? 0;
+    const ep = existing ? (QUEST_TYPE_PRI[existing.type] ?? 0) : -1;
+    if (!existing || np > ep) mintMap[q.mint] = q;
+  }
+
+  // Fetch token accounts from both SPL and Token-2022 programs
+  const [r1, r2] = await Promise.all([
+    rpcPost(rpcUrl, 'getTokenAccountsByOwner', [addr, { programId: SPL_PROG }, { encoding: 'jsonParsed' }]).catch(() => ({ value: [] })),
+    rpcPost(rpcUrl, 'getTokenAccountsByOwner', [addr, { programId: TOKEN_2022_PROG }, { encoding: 'jsonParsed' }]).catch(() => ({ value: [] })),
   ]);
 
-  const mintMap = {};
-  for (const q of questList) mintMap[q.mint] = q;
+  // openByMint: mint → { pubkey, balance }
+  const openByMint = {};
+  for (const acc of [...(r1?.value ?? []), ...(r2?.value ?? [])]) {
+    const info = acc.account.data.parsed.info;
+    if (mintMap[info.mint] && (info.tokenAmount.uiAmount || 0) > 0) {
+      openByMint[info.mint] = { pubkey: acc.pubkey, balance: info.tokenAmount.uiAmount };
+    }
+  }
 
-  const accounts = (res?.value ?? [])
-    .map(acc => {
-      const info = acc.account.data.parsed.info;
-      return { pubkey: acc.pubkey, mint: info.mint, balance: info.tokenAmount.uiAmount || 0 };
-    })
-    .filter(a => mintMap[a.mint] && a.balance > 0)
-    .map(a => ({ ...a, quest: mintMap[a.mint] }));
+  // ── Closed-account recovery for YT quests ──────────────────────────────────
+  // YT tokens expire at maturity; user may have already redeemed. We scan the
+  // wallet's recent tx history to find the token account pubkey even if closed.
+  const ytMissing = questList.filter(q => q.type === 'YT' && q.mint && !openByMint[q.mint]);
+  if (ytMissing.length > 0) {
+    setLoadingMsg('Scanning for redeemed YT positions…', 'Checking recent tx history');
+    const seeking = new Map(ytMissing.map(q => [q.mint, q]));
+    try {
+      const walletSigs = await rpcPost(rpcUrl, 'getSignaturesForAddress',
+        [addr, { limit: 200, commitment: 'confirmed' }]).catch(() => []);
+      const BATCH = 20;
+      for (let i = 0; i < walletSigs.length && seeking.size > 0; i += BATCH) {
+        const txns = await Promise.all(
+          walletSigs.slice(i, i + BATCH).map(s =>
+            rpcPost(rpcUrl, 'getTransaction', [
+              s.signature,
+              { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' },
+            ]).catch(() => null)
+          )
+        );
+        for (const tx of txns) {
+          if (!tx) continue;
+          const keys = tx.transaction?.message?.accountKeys ?? [];
+          for (const b of (tx.meta?.postTokenBalances ?? [])) {
+            if (!seeking.has(b.mint)) continue;
+            const kp = typeof keys[b.accountIndex] === 'string' ? keys[b.accountIndex] : keys[b.accountIndex]?.pubkey;
+            if (kp) {
+              openByMint[b.mint] = { pubkey: kp, balance: 0 }; // balance 0 = already redeemed
+              seeking.delete(b.mint);
+            }
+          }
+        }
+      }
+    } catch {}
+  }
 
-  if (!accounts.length) return { totalFlares: 0, totalDaily: 0, positions: [], fromCache: false };
+  const accounts = Object.entries(openByMint)
+    .map(([mint, { pubkey, balance }]) => ({ pubkey, mint, balance, quest: mintMap[mint] }))
+    .filter(a => a.quest);
 
   let totalFlares = 0, totalDaily = 0;
   const positions = [];
+  const nowTs = Math.floor(Date.now() / 1000);
 
   for (let i = 0; i < accounts.length; i++) {
     const { pubkey, balance, quest } = accounts[i];
@@ -753,11 +1082,12 @@ async function computeOnChainFlares(addr, rpcUrl, questList) {
 
     let flares = 0;
     try {
-      const timeline = await buildBalanceTimeline(rpcUrl, pubkey);
+      let timeline = await buildBalanceTimeline(rpcUrl, pubkey);
+      // Cap YT positions at maturity (don't count flares after the market expires)
+      if (quest.matTs) timeline = capTimelineAtTs(timeline, Math.min(quest.matTs, nowTs));
       flares = integrateFlares(timeline, quest.mult);
     } catch {
-      // Estimation fallback: assume held since season start
-      const daysSinceStart = Math.max(0, (Date.now() / 1000 - SEASON_START_TS) / 86400);
+      const daysSinceStart = Math.max(0, (nowTs - SEASON_START_TS) / 86400);
       flares = balance * quest.mult * daysSinceStart;
     }
 
@@ -771,16 +1101,49 @@ async function computeOnChainFlares(addr, rpcUrl, questList) {
     });
   }
 
+  // ── Exponent Finance: staked YT positions (YieldTokenPosition accounts) ──────
+  setLoadingMsg('Reading Exponent farm positions…', 'Scanning staked YT');
+  try {
+    const ytFarm = await fetchExponentYtFarmPositions(addr, rpcUrl, questList);
+    for (const fp of ytFarm) {
+      // Avoid double-counting if the quest already appeared from token accounts
+      // (in practice staked YT balance is 0 in the token account, so no overlap)
+      totalFlares += fp.flares;
+      totalDaily  += fp.daily;
+      positions.push(fp);
+    }
+  } catch(e) { console.warn('Exponent YT farm scan failed:', e); }
+
+  // ── Exponent Finance: staked LP positions (LpPosition accounts) ──────────────
+  setLoadingMsg('Reading Exponent farm positions…', 'Scanning staked LP');
+  try {
+    const lpFarm = await fetchExponentLpFarmPositions(addr, rpcUrl, questList);
+    for (const fp of lpFarm) {
+      totalFlares += fp.flares;
+      totalDaily  += fp.daily;
+      positions.push(fp);
+    }
+  } catch(e) { console.warn('Exponent LP farm scan failed:', e); }
+
+  if (!positions.length) return { totalFlares: 0, totalDaily: 0, positions: [], cachedTs: null, fromCache: false };
+
   positions.sort((a, b) => b.daily - a.daily);
   setLoadingMsg('Done!');
 
+  const nowSec = Date.now() / 1000;
   const data = { totalFlares, totalDaily, positions };
-  try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now() / 1000, data })); } catch {}
-  return { ...data, fromCache: false };
+  try { localStorage.setItem(ck, JSON.stringify({ ts: nowSec, data })); } catch {}
+  return { ...data, cachedTs: nowSec, fromCache: false };
 }
 
 function clearOcCache(addr) {
-  try { localStorage.removeItem(OC_CACHE_PFX + addr); } catch {}
+  // Clear current and any legacy cache keys
+  try {
+    localStorage.removeItem(OC_CACHE_PFX + addr);
+    localStorage.removeItem('analytiq_oc_v3_' + addr);
+    localStorage.removeItem('analytiq_oc_v2_' + addr);
+    localStorage.removeItem('analytiq_oc_v1_' + addr);
+  } catch {}
 }
 
 // ── Main loader ────────────────────────────────────────────────────────────────
@@ -817,9 +1180,10 @@ async function loadDashboard(addr, forceRefresh = false) {
       walletState = {
         addr,
         currentFlares: result.totalFlares,
-        loyaltyMult:   1.4,   // not readable from chain; user adjusts via dropdown
+        loyaltyMult:   1.4,
         positions:     result.positions,
         totalDaily:    result.totalDaily,
+        cachedTs:      result.cachedTs,
         sourceLabel:   result.fromCache ? 'On-chain (cached)' : 'On-chain · Helius',
         fromCache:     result.fromCache,
       };
@@ -885,7 +1249,7 @@ async function loadDashboard(addr, forceRefresh = false) {
   const opts = [1.4, 1.3, 1.2, 1.0];
   multSel.value = String(opts.reduce((a, b) => Math.abs(b - loyaltyMult) < Math.abs(a - loyaltyMult) ? b : a));
 
-  walletState = { addr, currentFlares, loyaltyMult, positions, totalDaily, sourceLabel: 'Hanyon index', fromCache: false };
+  walletState = { addr, currentFlares, loyaltyMult, positions, totalDaily, cachedTs: Date.now()/1000, sourceLabel: 'Hanyon index', fromCache: false };
   render();
   setState('dashboard');
 }
@@ -911,13 +1275,26 @@ function render() {
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
-  const { sourceLabel, fromCache } = walletState;
+  const { sourceLabel, fromCache, cachedTs } = walletState;
   const multCls    = loyaltyMult >= 1.4 ? 'badge-green' : loyaltyMult >= 1.2 ? 'badge-orange' : 'badge-muted';
   const isOnChain  = sourceLabel.includes('Helius') || sourceLabel.includes('On-chain');
-  const badgeCls   = isOnChain ? (fromCache ? 'cached' : 'live') : 'hanyon';
-  const badgeTxt   = isOnChain ? (fromCache ? '⏱ On-chain · cached' : '⚡ On-chain · live') : '📦 Hanyon index';
+
+  // Cache age display
+  const cacheAgeMins = cachedTs ? Math.round((Date.now() / 1000 - cachedTs) / 60) : null;
+  const isStale = cacheAgeMins !== null && cacheAgeMins > 20;
+  const ageLabel = cacheAgeMins !== null
+    ? (cacheAgeMins < 1 ? 'just now' : cacheAgeMins < 60 ? `${cacheAgeMins}m ago` : `${Math.floor(cacheAgeMins/60)}h ago`)
+    : '';
+
+  const badgeCls   = isOnChain ? (fromCache ? (isStale ? 'cached' : 'cached') : 'live') : 'hanyon';
+  const badgeTxt   = isOnChain
+    ? (fromCache ? `⏱ cached ${ageLabel}` : '⚡ On-chain · live')
+    : '📦 Hanyon index';
   const refreshBtn = isOnChain
     ? `<button class="oc-refresh-btn" onclick="loadDashboard('${addr}', true)">↺ Refresh</button>`
+    : '';
+  const staleWarn = isStale && fromCache
+    ? `<span style="font-size:11px;color:var(--amber);margin-left:4px;">Data may be stale — hit Refresh to see latest positions</span>`
     : '';
   const loyaltyNote = isOnChain
     ? '<span style="font-size:10px;color:var(--text-4);margin-left:6px;">(adjust below if needed)</span>'
@@ -935,6 +1312,7 @@ function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span class="oc-source-badge ${badgeCls}">${badgeTxt}</span>
           ${refreshBtn}
+          ${staleWarn}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
@@ -1104,7 +1482,7 @@ function renderCountdown() {
   const strip = document.getElementById('countdown-strip');
   if (!strip) return;
   const daysLeft   = daysUntil(SEASON_END);
-  const seasonStart = new Date('2025-12-01T00:00:00Z');
+  const seasonStart = new Date('2026-04-13T05:00:00.000Z');
   const seasonEnd   = new Date(SEASON_END + 'T00:00:00Z');
   const pct = Math.min(100, Math.max(0,
     (Date.now() - seasonStart) / (seasonEnd - seasonStart) * 100));
