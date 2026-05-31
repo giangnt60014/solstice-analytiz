@@ -1151,15 +1151,8 @@ function applyFallback() {
       DAILY.solstice_series[DAILY.solstice_series.length-1].cumulative = solsticeNow;
     }
   } else {
-    try {
-      const [dr,dar] = await Promise.allSettled([
-        fetch('/api/daily'),
-        fetch('/api/data'),
-      ]);
-      if (dr.status==='fulfilled'&&dr.value.ok)  DAILY = await dr.value.json();
-      if (dar.status==='fulfilled'&&dar.value.ok) DATA  = await dar.value.json();
-    } catch(_) {}
-
+    // s2.solstice.hanyon.app/api/daily and /api/data no longer exist —
+    // build a synthetic 2-point series from the live analytics total.
     if (solsticeNow!==null) {
       if (DAILY?.solstice_series?.length>=1) {
         DAILY.solstice_series[DAILY.solstice_series.length-1].cumulative = solsticeNow;
