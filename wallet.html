@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solstice S2 Calculator – Wallet Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:      #060a16;
+  --navy-2:    #0a1020;
+  --navy-3:    #10192e;
+  --bg:        #0a1020;
+  --surface:   #0f1928;
+  --surface-2: #141f32;
+  --border:    rgba(255,255,255,.09);
+  --text-1:    #e8eeff;
+  --text-2:    #7e92be;
+  --text-3:    #485e82;
+  --text-4:    #2b3d5e;
+  --orange:    #7c6af7;
+  --orange-lt: rgba(124,106,247,.14);
+  --orange-dk: #6355d8;
+  --green:     #22c55e;
+  --green-lt:  rgba(34,197,94,.12);
+  --red:       #ef4444;
+  --amber:     #fbbf24;
+  --cyan:      #22d3ee;
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 18px;
+}
+html { background: var(--bg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; color: var(--text-1); }
+body { min-height: 100vh; }
+
+/* ── Header ── */
+.header { background: var(--navy); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 200; border-bottom: 1px solid rgba(255,255,255,.07); }
+.header-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 800; font-size: 15px; letter-spacing: -0.02em; text-decoration: none; }
+.header-badge { background: var(--orange); color: white; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-left: 2px; }
+.header-nav { display: flex; align-items: center; gap: 18px; }
+.header-nav a { color: rgba(255,255,255,.45); font-size: 12px; font-weight: 600; text-decoration: none; letter-spacing: .02em; transition: color .15s; }
+.header-nav a:hover { color: white; }
+.header-nav .open-app { background: linear-gradient(135deg, var(--orange-dk), var(--orange)); color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+.header-nav .open-app:hover { opacity: .88; color: white; }
+
+/* ── Search bar ── */
+.search-wrap { background: var(--navy-2); border-bottom: 1px solid rgba(255,255,255,.07); padding: 14px 24px; display: flex; align-items: center; gap: 10px; }
+.search-input { flex: 1; max-width: 680px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: white; padding: 10px 14px; border-radius: var(--radius-sm); font: inherit; font-size: 13px; font-family: ui-monospace, monospace; transition: border-color .15s; }
+.search-input:focus { outline: none; border-color: var(--orange); background: rgba(255,255,255,.09); }
+.search-input::placeholder { color: rgba(255,255,255,.2); }
+.search-btn { background: linear-gradient(135deg, var(--orange-dk), var(--orange)); color: white; border: none; padding: 10px 22px; border-radius: var(--radius-sm); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity .15s; }
+.search-btn:hover { opacity: .85; }
+.search-hint { font-size: 11px; color: rgba(255,255,255,.25); margin-left: 4px; }
+
+/* ── Page shell ── */
+.page { max-width: 1340px; margin: 0 auto; padding: 28px 24px 80px; }
+
+/* ── States ── */
+.state-center { text-align: center; padding: 80px 20px; }
+.state-icon { font-size: 44px; margin-bottom: 16px; }
+.state-title { font-size: 18px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; }
+.state-body { font-size: 13px; color: var(--text-3); max-width: 420px; margin: 0 auto; line-height: 1.7; }
+.state-body a { color: var(--orange); }
+.oc-spinner {
+  width: 32px; height: 32px; margin: 0 auto;
+  border: 3px solid rgba(124,106,247,.18);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.oc-source-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 4px; white-space: nowrap;
+}
+.oc-source-badge.live { background: rgba(34,197,94,.15); color: #86efac; }
+.oc-source-badge.cached { background: rgba(124,106,247,.14); color: var(--orange); }
+.oc-source-badge.hanyon { background: rgba(255,255,255,.07); color: var(--text-3); }
+.oc-refresh-btn {
+  background: none; border: 1px solid rgba(255,255,255,.15); color: var(--text-3);
+  padding: 3px 10px; border-radius: 5px; font: inherit; font-size: 10px; font-weight: 700;
+  cursor: pointer; letter-spacing: .04em; transition: all .15s;
+}
+.oc-refresh-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, #0e1936 0%, #111b48 55%, #160f58 100%);
+  border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 20px;
+  position: relative; overflow: hidden;
+  border: 1px solid rgba(124,106,247,.18);
+}
+.hero::before { content: ''; position: absolute; right: -60px; top: -60px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(124,106,247,.2) 0%, transparent 68%); }
+.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; }
+.hero-addr-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hero-addr { font-family: ui-monospace, monospace; font-size: 13px; color: rgba(255,255,255,.5); letter-spacing: .02em; }
+.copy-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.5); padding: 3px 9px; border-radius: 4px; font: inherit; font-size: 11px; cursor: pointer; transition: all .15s; }
+.copy-btn:hover { background: rgba(255,255,255,.16); color: white; }
+.ext-link { color: rgba(255,255,255,.28); font-size: 11px; text-decoration: none; }
+.ext-link:hover { color: rgba(255,255,255,.65); }
+.hero-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.badge-orange { background: rgba(124,106,247,.2); color: var(--orange); border: 1px solid rgba(124,106,247,.3); }
+.badge-green  { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+.badge-blue   { background: rgba(34,211,238,.12); color: var(--cyan); border: 1px solid rgba(34,211,238,.22); }
+.badge-muted  { background: rgba(255,255,255,.07); color: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.1); }
+.hero-bottom { margin-top: 22px; position: relative; }
+.hero-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--orange); margin-bottom: 6px; }
+.hero-num { font-size: 50px; font-weight: 900; letter-spacing: -0.04em; color: white; line-height: 1; font-variant-numeric: tabular-nums; }
+.hero-num-unit { font-size: 18px; font-weight: 600; color: rgba(255,255,255,.32); margin-left: 6px; }
+.hero-sub { font-size: 12px; color: rgba(255,255,255,.32); margin-top: 8px; }
+
+/* ── Stat cards ── */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--text-3); margin-bottom: 6px; }
+.stat-val { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text-1); }
+.stat-val.orange { color: var(--orange); }
+.stat-val.green  { color: var(--green); }
+.stat-sub { font-size: 11px; color: var(--text-4); margin-top: 3px; }
+
+/* ── Two-column layout ── */
+.two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; margin-bottom: 24px; align-items: start; }
+
+/* ── Section card ── */
+.s-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+.s-card-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); }
+.s-card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--text-2); }
+.s-card-meta { font-size: 10px; color: var(--text-4); }
+
+/* ── Positions table ── */
+.pos-table { width: 100%; border-collapse: collapse; }
+.pos-table th { padding: 9px 16px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-4); border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface-2); }
+.pos-table th.right { text-align: right; }
+.pos-table td { padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.pos-table tr:last-child td { border-bottom: none; }
+.pos-table tbody tr:hover td { background: var(--surface-2); }
+.type-badge { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: .06em; padding: 2px 6px; border-radius: 3px; vertical-align: middle; }
+.type-yt   { background: rgba(251,191,36,.18); color: var(--amber); }
+.type-hold { background: rgba(124,106,247,.12); color: rgba(165,180,252,.7); }
+.type-lp   { background: rgba(34,211,238,.12); color: var(--cyan); }
+.type-unk  { background: rgba(255,255,255,.07); color: var(--text-3); }
+.pos-name { font-size: 13px; font-weight: 700; color: var(--text-1); margin-left: 7px; vertical-align: middle; }
+.pos-detail { font-size: 11px; color: var(--text-4); margin-top: 3px; }
+.pos-bal { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-2); font-weight: 600; }
+.pos-bal-hint { font-size: 10px; color: var(--text-4); }
+.pos-mult { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.pos-daily { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-1); text-align: right; }
+.pos-share { font-size: 11px; color: var(--text-4); text-align: right; margin-top: 2px; }
+.bar-wrap { margin-top: 4px; height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--orange-dk), var(--orange)); }
+.pos-table-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface-2); font-size: 11px; color: var(--text-4); display: flex; align-items: center; justify-content: space-between; }
+.pos-table-footer strong { color: var(--text-2); }
+.source-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .04em; }
+.source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+/* ── Projection table ── */
+.proj-table { width: 100%; border-collapse: collapse; }
+.proj-table th { padding: 9px 16px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-4); border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface-2); }
+.proj-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.proj-table tr:last-child td { border-bottom: none; }
+.proj-today td { background: rgba(255,255,255,.03); }
+.proj-today .p-label { font-weight: 800; color: var(--text-2); }
+.proj-end td { background: rgba(124,106,247,.1); }
+.proj-end .p-label { font-weight: 800; color: var(--orange); }
+.p-label { font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.p-flares { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-1); }
+.p-share { font-weight: 700; color: var(--orange); white-space: nowrap; }
+.p-slx { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-1); }
+
+/* ── Multiplier selector ── */
+.proj-controls { display: flex; gap: 8px; align-items: center; }
+.proj-select { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: var(--text-2); padding: 4px 8px; border-radius: var(--radius-sm); font: inherit; font-size: 11px; cursor: pointer; appearance: none; -webkit-appearance: none; }
+.proj-select:focus { outline: none; border-color: var(--orange); }
+
+/* ── FDV grid ── */
+.section-full { margin-bottom: 24px; }
+.section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.section-head h2 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--text-3); white-space: nowrap; }
+.section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.fdv-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.fdv-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; transition: border-color .2s, box-shadow .2s; cursor: default; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.fdv-card:hover { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(124,106,247,.14); }
+.fdv-label { font-size: 11px; font-weight: 800; color: var(--text-3); letter-spacing: .04em; }
+.fdv-price { font-size: 10px; color: var(--text-4); margin-top: 2px; }
+.fdv-usd { font-size: 20px; font-weight: 800; color: var(--text-1); margin-top: 10px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.fdv-slx { font-size: 11px; color: var(--text-4); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+/* ── Methodology box ── */
+.meth-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; font-size: 12px; color: var(--text-2); line-height: 1.75; margin-bottom: 24px; }
+.meth-box strong { color: var(--text-1); }
+.meth-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.meth-tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .04em; }
+
+/* ── Responsive ── */
+@media (max-width: 1020px) { .two-col { grid-template-columns: 1fr; } }
+@media (max-width: 860px)  { .stats { grid-template-columns: repeat(2, 1fr); } .fdv-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px)  { .hero-num { font-size: 36px; } .stats { grid-template-columns: 1fr 1fr; } }
+
+/* ── Countdown strip ── */
+.countdown-strip { background: var(--navy); border-bottom: 1px solid rgba(255,255,255,.07); padding: 7px 24px; display: flex; align-items: center; gap: 16px; font-size: 12px; overflow-x: auto; }
+.cd-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cd-label { color: var(--text-3); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.cd-val { color: var(--text-1); font-weight: 800; font-variant-numeric: tabular-nums; }
+.cd-sep { color: var(--text-4); }
+.cd-bar-wrap { flex: 1; min-width: 60px; max-width: 180px; height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
+.cd-bar-fill { height: 4px; background: linear-gradient(90deg, var(--orange-dk), var(--orange)); border-radius: 2px; }
+.pace-pill { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.pace-ahead   { background: rgba(34,197,94,.15);  color: #4ade80; }
+.pace-behind  { background: rgba(239,68,68,.15);  color: #f87171; }
+.pace-neutral { background: rgba(255,255,255,.08); color: var(--text-3); }
+
+/* ── Share modal ── */
+.modal-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.72); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-box { background: var(--surface); border: 1px solid rgba(124,106,247,.25); border-radius: var(--radius-lg); width: 100%; max-width: 520px; box-shadow: 0 24px 64px rgba(0,0,0,.65), 0 0 0 1px rgba(124,106,247,.1); overflow: hidden; }
+.modal-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); }
+.modal-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--text-2); }
+.modal-close { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); color: var(--text-2); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.modal-close:hover { background: rgba(255,255,255,.16); color: white; }
+.modal-body { padding: 20px; }
+.share-card { background: linear-gradient(135deg,#0e1936 0%,#111b48 55%,#160f58 100%); border: 1px solid rgba(124,106,247,.25); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; position: relative; overflow: hidden; }
+.share-card::before { content:''; position:absolute; right:-40px; top:-40px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(124,106,247,.25) 0%,transparent 68%); }
+.sc-brand { font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:10px; }
+.sc-addr  { font-family:ui-monospace,monospace; font-size:11px; color:rgba(255,255,255,.4); margin-bottom:14px; }
+.sc-big   { font-size:38px; font-weight:900; letter-spacing:-0.04em; color:white; font-variant-numeric:tabular-nums; }
+.sc-unit  { font-size:13px; color:rgba(255,255,255,.3); margin-left:4px; }
+.sc-stats { display:flex; gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.1); position:relative; }
+.sc-stat  { display:flex; flex-direction:column; gap:2px; }
+.sc-stat-label { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.28); }
+.sc-stat-val   { font-size:13px; font-weight:800; color:white; font-variant-numeric:tabular-nums; }
+.sc-fdv-box { background:rgba(124,106,247,.18); border:1px solid rgba(124,106,247,.3); border-radius:8px; padding:10px 14px; margin-top:12px; display:flex; align-items:center; justify-content:space-between; position:relative; }
+.sc-fdv-label { font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:2px; }
+.sc-fdv-usd   { font-size:24px; font-weight:900; color:white; font-variant-numeric:tabular-nums; }
+.sc-ref { font-size:9px; color:rgba(255,255,255,.22); margin-top:10px; text-align:right; position:relative; }
+.sc-positions { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.1); display:flex; flex-direction:column; gap:6px; position:relative; }
+.sc-pos-label { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.28); margin-bottom:4px; }
+.sc-pos-row { display:flex; align-items:center; gap:7px; }
+.sc-pos-badge { font-size:8px; font-weight:800; letter-spacing:.05em; padding:1px 5px; border-radius:3px; flex-shrink:0; }
+.sc-pos-yt   { background:rgba(251,191,36,.2);  color:#fbbf24; }
+.sc-pos-hold { background:rgba(124,106,247,.18); color:#a78bfa; }
+.sc-pos-lp   { background:rgba(34,211,238,.15);  color:#22d3ee; }
+.sc-pos-unk  { background:rgba(255,255,255,.1);  color:rgba(255,255,255,.4); }
+.sc-pos-name { font-size:10px; color:rgba(255,255,255,.55); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sc-pos-bar  { flex:1; max-width:60px; height:3px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
+.sc-pos-bar-fill { height:3px; border-radius:2px; }
+.sc-pos-daily { font-size:10px; font-weight:700; color:rgba(255,255,255,.7); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.share-controls { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.share-fdv-sel  { width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:var(--text-1); padding:8px 12px; border-radius:var(--radius-sm); font:inherit; font-size:12px; cursor:pointer; appearance:none; }
+.share-fdv-sel:focus { outline:none; border-color:var(--orange); }
+.share-btn-row  { display:flex; gap:8px; }
+.share-copy-btn { flex:1; background:linear-gradient(135deg,var(--orange-dk),var(--orange)); color:white; border:none; padding:8px 14px; border-radius:var(--radius-sm); font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; transition:opacity .15s; text-align:center; }
+.share-copy-btn:hover { opacity:.85; }
+.share-img-btn  { flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:var(--text-1); padding:8px 14px; border-radius:var(--radius-sm); font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; transition:all .15s; text-align:center; }
+.share-img-btn:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.22); }
+.share-img-btn:disabled { opacity:.5; cursor:default; }
+.share-link-box { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius-sm); padding:8px 12px; font-family:ui-monospace,monospace; font-size:11px; color:var(--text-3); word-break:break-all; cursor:pointer; transition:background .15s; }
+.share-link-box:hover { background:rgba(255,255,255,.07); color:var(--text-2); }
+
+/* ── Position optimizer ── */
+.opt-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+.opt-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; display:flex; align-items:flex-start; gap:14px; transition:border-color .2s; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+.opt-card:hover { border-color:rgba(124,106,247,.3); }
+.opt-icon  { width:36px; height:36px; border-radius:8px; background:rgba(124,106,247,.15); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+.opt-body  { flex:1; min-width:0; }
+.opt-title { font-size:13px; font-weight:700; color:var(--text-1); margin-bottom:4px; }
+.opt-desc  { font-size:11px; color:var(--text-3); line-height:1.65; }
+.opt-desc strong { color:var(--text-2); }
+.opt-gain       { text-align:right; flex-shrink:0; }
+.opt-gain-val   { font-size:15px; font-weight:800; color:var(--green); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.opt-gain-sub   { font-size:10px; color:var(--text-4); margin-top:2px; white-space:nowrap; }
+.opt-empty      { text-align:center; padding:22px; color:var(--text-4); font-size:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <a class="header-brand" href="calculator.html">
+    <img src="favicon.svg" width="22" height="22" alt="" style="border-radius:5px;">
+    Solstice
+    <span class="header-badge">S2</span>
+  </a>
+  <nav class="header-nav">
+    <a href="calculator.html">Calculator</a>
+    <a href="#" style="color:white;">Dashboard</a>
+    <a href="https://app.solstice.finance/?ref=JxeE7iMzNm" class="open-app" target="_blank" rel="noopener">Open App ↗</a>
+  </nav>
+</header>
+
+<!-- Search bar -->
+<div class="search-wrap">
+  <input id="wallet-input" type="text" class="search-input"
+    placeholder="Enter Solana wallet address…"
+    autocomplete="off"
+    onkeydown="if(event.key==='Enter') handleSearch()">
+  <button class="search-btn" onclick="handleSearch()">Load Dashboard</button>
+  <span class="search-hint" id="search-hint"></span>
+</div>
+
+<!-- Countdown strip -->
+<div class="countdown-strip" id="countdown-strip"></div>
+
+<!-- Page content -->
+<div class="page">
+
+  <!-- Empty state -->
+  <div id="st-empty" class="state-center">
+    <div class="state-icon">📊</div>
+    <div class="state-title">Wallet farming dashboard</div>
+    <div class="state-body">
+      Paste any Solana wallet address to see a full breakdown of its S2 farming — active positions, daily emission rates, projected flares, and SLX estimates at season end.
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div id="st-loading" style="display:none;" class="state-center">
+    <div class="oc-spinner"></div>
+    <div class="state-body" style="color:var(--text-3);font-weight:600;margin-top:14px;" id="loading-msg">Loading…</div>
+    <div class="state-body" style="margin-top:6px;font-size:11px;" id="loading-sub"></div>
+  </div>
+
+  <!-- Error state -->
+  <div id="st-error" style="display:none;" class="state-center">
+    <div class="state-icon">⚠️</div>
+    <div class="state-title" id="err-title">Could not load wallet</div>
+    <div class="state-body" id="err-body"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none;">
+
+    <!-- Hero -->
+    <div class="hero" id="dash-hero"></div>
+
+    <!-- Quick stats -->
+    <div class="stats" id="dash-stats"></div>
+
+    <!-- Two-column -->
+    <div class="two-col">
+
+      <!-- Positions -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <span class="s-card-title">Active farming positions</span>
+          <div class="source-chip"><span class="source-dot"></span><span id="source-label">Index</span></div>
+        </div>
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>Position</th>
+              <th>Balance</th>
+              <th>Mult</th>
+              <th class="right">Daily / Share</th>
+            </tr>
+          </thead>
+          <tbody id="pos-tbody"></tbody>
+        </table>
+        <div class="pos-table-footer" id="pos-footer"></div>
+      </div>
+
+      <!-- Projections -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <span class="s-card-title">Projection timeline</span>
+          <div class="proj-controls">
+            <select class="proj-select" id="proj-your-mult" onchange="rerender()">
+              <option value="1.4">1.4× loyalty</option>
+              <option value="1.3">1.3× loyalty</option>
+              <option value="1.2">1.2× loyalty</option>
+              <option value="1.0">1.0× loyalty</option>
+            </select>
+            <select class="proj-select" id="proj-avg-mult" onchange="rerender()">
+              <option value="1.4">avg 1.4×</option>
+              <option value="1.3" selected>avg 1.3×</option>
+              <option value="1.2">avg 1.2×</option>
+              <option value="1.1">avg 1.1×</option>
+              <option value="1.0">avg 1.0×</option>
+            </select>
+          </div>
+        </div>
+        <table class="proj-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Flares</th>
+              <th>Share</th>
+              <th>SLX (3%)</th>
+            </tr>
+          </thead>
+          <tbody id="proj-tbody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /two-col -->
+
+    <!-- Position optimizer -->
+    <div id="opt-section" style="display:none;">
+      <div class="section-head"><h2>Position optimizer</h2></div>
+      <div class="opt-grid" id="opt-grid"></div>
+    </div>
+
+    <!-- FDV scenarios -->
+    <div class="section-full">
+      <div class="section-head"><h2>USD value at season end — FDV scenarios</h2></div>
+      <div class="fdv-grid" id="fdv-grid"></div>
+    </div>
+
+    <!-- Methodology -->
+    <div class="section-head"><h2>Methodology</h2></div>
+    <div class="meth-box">
+      <strong>Balance estimates:</strong> When no Helius RPC key is configured, token balances are back-calculated as <em>daily_emission ÷ multiplier</em>. Configure a free Helius key in the <a href="calculator.html" style="color:var(--orange)">Calculator</a> sidebar to enable direct on-chain reads.
+      <br><br>
+      <strong>Projections:</strong> YT positions are capped at Exponent maturity (Jun 2026 / Sep 2026). Non-YT positions (HOLD, LP) earn linearly until season end. System total projected from Solstice live API + 7-day average daily rate.
+      <br><br>
+      <strong>LP / lend / borrow:</strong> Protocol-internal positions (Kamino lending, Loopscale borrow, Exponent YT via event-walked accounts) may not appear if not indexed by Hanyon. Totals sourced from the analytics index are authoritative.
+      <div class="meth-tags">
+        <span class="meth-tag">Data: Hanyon analytics index</span>
+        <span class="meth-tag">System: Solstice official API</span>
+        <span class="meth-tag">1B SLX total supply</span>
+        <span class="meth-tag">Season end 2026-08-01</span>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+
+</div><!-- /page -->
+
+<!-- Share modal -->
+<div id="share-modal" class="modal-backdrop" style="display:none;" onclick="closeShareModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <span class="modal-title">Share wallet card</span>
+      <button class="modal-close" onclick="closeShareModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="share-controls">
+        <select class="share-fdv-sel" id="share-fdv" onchange="renderShareCardContent()">
+          <option value="30">$30M FDV</option>
+          <option value="50">$50M FDV</option>
+          <option value="100" selected>$100M FDV</option>
+          <option value="150">$150M FDV</option>
+          <option value="200">$200M FDV</option>
+          <option value="300">$300M FDV</option>
+          <option value="400">$400M FDV</option>
+          <option value="500">$500M FDV</option>
+        </select>
+        <div class="share-btn-row">
+          <button class="share-copy-btn" id="share-copy-btn" onclick="copyShareLink()">🔗 Copy link</button>
+          <button class="share-img-btn" id="copy-img-btn" onclick="copyCardAsImage()">📋 Copy image</button>
+        </div>
+      </div>
+      <div id="share-card-content"></div>
+      <div class="share-link-box" id="share-link-box" onclick="copyShareLink()" title="Click to copy"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+const SLX_SUPPLY    = 1_000_000_000;
+const AIRDROP_PCT   = 0.03;
+const FDV_M         = [30, 50, 100, 150, 200, 300, 400, 500];
+const SEASON_END    = '2026-08-01';
+const YT_MAT_TS     = 1780318699; // ~Jun 30 2026 Exponent maturity
+const YT_MAT_TS_SEP = 1790956800; // ~Sep 30 2026 (approx)
+
+const YT_CODES = new Set([
+  'S2_EXPONENT_YIELD_USX_JUN26','S2_EXPONENT_YIELD_EUSX_JUN26',
+  'S2_EXPONENT_YIELD_USX_SEP26','S2_EXPONENT_YIELD_EUSX_SEP26',
+]);
+
+const QUEST_FALLBACK = [
+  { code:'S2_EXPONENT_YIELD_USX_JUN26',  label:'YT USX Jun26',  mult:30, mint:'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s', type:'YT',   matTs: YT_MAT_TS },
+  { code:'S2_EXPONENT_YIELD_EUSX_JUN26', label:'YT eUSX Jun26', mult:15, mint:'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw', type:'YT',   matTs: YT_MAT_TS },
+  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'YT USX Sep26',  mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT',   matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'YT eUSX Sep26', mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT',   matTs: YT_MAT_TS_SEP },
+  { code:'S2_HOLD_USX_DAILY',            label:'Hold USX',      mult:10, mint:'6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG', type:'HOLD', matTs: null },
+  { code:'S2_HOLD_EUSX_DAILY',           label:'Hold eUSX',     mult:2,  mint:'3ThdFZQKM6kRyVGLG48kaPg5TRMhYMKY1iCRa9xop1WC', type:'HOLD', matTs: null },
+  { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault', mult:10, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP',   matTs: null },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let questMap  = {};     // code → { label, mult, type, mint, matTs }
+let mintToCode= {};     // mint → code
+let sysNow    = 0;
+let sysDaily  = 1_153_865_942;
+let walletState = null; // populated after load
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n, dec=0)  { return (isFinite(n) && n != null) ? n.toLocaleString('en-US', { maximumFractionDigits:dec, minimumFractionDigits:dec }) : '—'; }
+function fmtShort(n) {
+  if (!isFinite(n) || n == null) return '—';
+  if (Math.abs(n) >= 1e9) return (n/1e9).toFixed(2)+'B';
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toLocaleString();
+}
+function shorten(a) { return a.length > 14 ? a.slice(0,6)+'…'+a.slice(-4) : a; }
+function utcDate()  { return new Date().toISOString().slice(0,10); }
+function daysUntil(iso) {
+  const now = new Date(); now.setUTCHours(0,0,0,0);
+  return Math.max(0, Math.round((new Date(iso+'T00:00:00Z') - now) / 86400000));
+}
+function daysUntilTs(ts) {
+  return Math.max(0, (ts - Date.now()/1000) / 86400);
+}
+
+// ── Quest data ────────────────────────────────────────────────────────────────
+async function loadQuests() {
+  const CK = 'analytiq_quests_v2';
+  try {
+    const c = JSON.parse(localStorage.getItem(CK) || 'null');
+    if (c && c.date === utcDate()) { buildQuestMap(c.quests); return; }
+  } catch {}
+  try {
+    const res = await fetch('https://app.solstice.finance/api/flares/quests');
+    if (res.ok) {
+      const { quests } = await res.json();
+      const TYPE_MAP = { YIELD_TRADE:'YT', HOLD:'HOLD', LIQUIDITY_POSITION:'LP' };
+      const out = quests.filter(q => q.mint && q.isActive).map(q => ({
+        code: q.questCode, label: q.name, mult: q.multiplier,
+        mint: q.mint, type: TYPE_MAP[q.type] || q.type, matTs: null,
+      }));
+      // Patch known maturity timestamps for YT quests
+      for (const q of out) {
+        if (q.code.includes('JUN26')) q.matTs = YT_MAT_TS;
+        if (q.code.includes('SEP26')) q.matTs = YT_MAT_TS_SEP;
+      }
+      try { localStorage.setItem(CK, JSON.stringify({ date: utcDate(), quests: out })); } catch {}
+      buildQuestMap(out);
+      return;
+    }
+  } catch {}
+  buildQuestMap(QUEST_FALLBACK);
+}
+
+function buildQuestMap(arr) {
+  for (const q of arr) {
+    questMap[q.code] = q;
+    if (q.mint) mintToCode[q.mint] = q.code;
+  }
+}
+
+function getQuest(code) {
+  return questMap[code] || {
+    code, label: code.replace(/^S2_/,'').replace(/_/g,' ').toLowerCase(), mult: 1, type: 'UNKNOWN', mint: null, matTs: null,
+  };
+}
+
+// ── System data ────────────────────────────────────────────────────────────────
+async function loadSystem() {
+  try {
+    const r = await fetch('https://app.solstice.finance/api/flares/analytics');
+    if (r.ok) { const j = await r.json(); if (j?.totalFlares) sysNow = Math.round(j.totalFlares); }
+  } catch {}
+  try {
+    const r = await fetch('https://s2.solstice.hanyon.app/api/daily');
+    if (r.ok) {
+      const d = await r.json();
+      const ss = d?.solstice_series;
+      if (ss?.length >= 8) {
+        const recent = ss.slice(-8);
+        const deltas = [];
+        for (let i=1; i<recent.length; i++) {
+          const v = recent[i].inflation;
+          if (v > 0 && v < 2.5e9) deltas.push(v);
+        }
+        if (deltas.length) sysDaily = deltas.reduce((a,b)=>a+b,0)/deltas.length;
+        if (!sysNow && ss.length) sysNow = ss[ss.length-1].cumulative || 0;
+      }
+    }
+  } catch {}
+  if (!sysNow) sysNow = 44_616_220_954;
+}
+
+// ── On-chain read ─────────────────────────────────────────────────────────────
+const SPL_PROG = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const HELIUS_KEY = '0514f30d-4212-488a-a160-29009a5d5740';
+function getRpc() {
+  const k = (localStorage.getItem('analytiq_rpc_key') || HELIUS_KEY).trim();
+  return `https://mainnet.helius-rpc.com/?api-key=${k}`;
+}
+async function fetchOnChain(addr) {
+  const rpc = getRpc();
+  if (!rpc) return null;
+  const res = await fetch(rpc, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getTokenAccountsByOwner',
+      params:[addr, {programId:SPL_PROG}, {encoding:'jsonParsed'}] }),
+  });
+  const d = await res.json();
+  if (!d.result?.value) return null;
+  const out = {};
+  for (const acc of d.result.value) {
+    const info = acc.account.data.parsed.info;
+    if (info.tokenAmount.uiAmount > 0) out[info.mint] = info.tokenAmount.uiAmount;
+  }
+  return out;
+}
+
+// ── On-chain historical walker ────────────────────────────────────────────────
+const SEASON_START_TS  = 1764547200;           // Dec 1 2025 00:00 UTC
+const OC_CACHE_PFX     = 'analytiq_oc_v2_';
+const OC_CACHE_TTL     = 4 * 3600;            // 4 hours
+
+function setLoadingMsg(main, sub = '') {
+  const m = document.getElementById('loading-msg');
+  const s = document.getElementById('loading-sub');
+  if (m) m.textContent = main;
+  if (s) s.textContent = sub;
+}
+
+async function rpcPost(rpcUrl, method, params) {
+  const res = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+  });
+  const d = await res.json();
+  if (d.error) throw new Error(`RPC ${method}: ${d.error.message}`);
+  return d.result;
+}
+
+// Fetch all signatures for a token account back to season start
+async function getAllSignatures(rpcUrl, pubkey) {
+  const sigs = [];
+  let before = undefined;
+  while (true) {
+    const opts = { limit: 100, commitment: 'confirmed' };
+    if (before) opts.before = before;
+    const page = await rpcPost(rpcUrl, 'getSignaturesForAddress', [pubkey, opts]);
+    if (!page?.length) break;
+    sigs.push(...page);
+    const oldest = page[page.length - 1];
+    // Stop once we've gone before season (with 1-day buffer to capture balance at start)
+    if (oldest.blockTime && oldest.blockTime < SEASON_START_TS - 86400) break;
+    if (page.length < 100) break;
+    before = oldest.signature;
+  }
+  return sigs;
+}
+
+// Extract post-transaction token balance for a specific token account pubkey
+function getPostBal(tx, tokenAccountPubkey) {
+  const keys  = tx.transaction?.message?.accountKeys ?? [];
+  const posts = tx.meta?.postTokenBalances ?? [];
+  for (const b of posts) {
+    const key = keys[b.accountIndex];
+    const kpk = typeof key === 'string' ? key : key?.pubkey;
+    if (kpk === tokenAccountPubkey) return b.uiTokenAmount?.uiAmount ?? 0;
+  }
+  return null; // this tx didn't touch this account
+}
+
+// Build [{time, balance}] timeline for one token account from season start → now
+async function buildBalanceTimeline(rpcUrl, tokenAccountPubkey) {
+  const sigs = await getAllSignatures(rpcUrl, tokenAccountPubkey);
+  if (!sigs.length) {
+    const now = Math.floor(Date.now() / 1000);
+    return [{ time: SEASON_START_TS, balance: 0 }, { time: now, balance: 0 }];
+  }
+
+  // Sort oldest → newest
+  sigs.sort((a, b) => (a.blockTime || 0) - (b.blockTime || 0));
+
+  // Fetch txns in parallel batches of 20
+  const BATCH = 20;
+  const events = [];
+  let balAtSeasonStart = 0;
+
+  for (let i = 0; i < sigs.length; i += BATCH) {
+    const batch = sigs.slice(i, i + BATCH);
+    const txns = await Promise.all(
+      batch.map(s => rpcPost(rpcUrl, 'getTransaction', [
+        s.signature,
+        { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' },
+      ]).catch(() => null))
+    );
+    for (const tx of txns) {
+      if (!tx?.blockTime) continue;
+      const bal = getPostBal(tx, tokenAccountPubkey);
+      if (bal === null) continue;
+      if (tx.blockTime < SEASON_START_TS) {
+        balAtSeasonStart = bal; // last balance before season = opening balance
+      } else {
+        events.push({ time: tx.blockTime, balance: bal });
+      }
+    }
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const sorted = events.sort((a, b) => a.time - b.time);
+  const lastBal = sorted.length ? sorted[sorted.length - 1].balance : balAtSeasonStart;
+
+  return [
+    { time: SEASON_START_TS, balance: balAtSeasonStart },
+    ...sorted,
+    { time: now, balance: lastBal }, // close timeline at current moment
+  ];
+}
+
+// Σ balance_i × multiplier × days_i across all periods
+function integrateFlares(timeline, multiplier) {
+  let total = 0;
+  for (let i = 0; i < timeline.length - 1; i++) {
+    const days = Math.max(0, (timeline[i + 1].time - timeline[i].time) / 86400);
+    total += timeline[i].balance * multiplier * days;
+  }
+  return total;
+}
+
+// Main walker: returns { totalFlares, totalDaily, positions, fromCache }
+async function computeOnChainFlares(addr, rpcUrl, questList) {
+  // Cache check
+  const ck = OC_CACHE_PFX + addr;
+  try {
+    const c = JSON.parse(localStorage.getItem(ck) || 'null');
+    if (c && (Date.now() / 1000 - c.ts) < OC_CACHE_TTL) return { ...c.data, fromCache: true };
+  } catch {}
+
+  setLoadingMsg('Reading token accounts…');
+
+  // Get all token accounts + pubkeys
+  const res = await rpcPost(rpcUrl, 'getTokenAccountsByOwner', [
+    addr, { programId: SPL_PROG }, { encoding: 'jsonParsed' },
+  ]);
+
+  const mintMap = {};
+  for (const q of questList) mintMap[q.mint] = q;
+
+  const accounts = (res?.value ?? [])
+    .map(acc => {
+      const info = acc.account.data.parsed.info;
+      return { pubkey: acc.pubkey, mint: info.mint, balance: info.tokenAmount.uiAmount || 0 };
+    })
+    .filter(a => mintMap[a.mint] && a.balance > 0)
+    .map(a => ({ ...a, quest: mintMap[a.mint] }));
+
+  if (!accounts.length) return { totalFlares: 0, totalDaily: 0, positions: [], fromCache: false };
+
+  let totalFlares = 0, totalDaily = 0;
+  const positions = [];
+
+  for (let i = 0; i < accounts.length; i++) {
+    const { pubkey, balance, quest } = accounts[i];
+    setLoadingMsg(
+      `Walking ${quest.label} history… (${i + 1}/${accounts.length})`,
+      'This may take a few seconds'
+    );
+
+    let flares = 0;
+    try {
+      const timeline = await buildBalanceTimeline(rpcUrl, pubkey);
+      flares = integrateFlares(timeline, quest.mult);
+    } catch {
+      // Estimation fallback: assume held since season start
+      const daysSinceStart = Math.max(0, (Date.now() / 1000 - SEASON_START_TS) / 86400);
+      flares = balance * quest.mult * daysSinceStart;
+    }
+
+    const daily = balance * quest.mult;
+    totalFlares += flares;
+    totalDaily  += daily;
+    positions.push({
+      code: quest.code, label: quest.label, type: quest.type,
+      mult: quest.mult, matTs: quest.matTs,
+      daily, balance, balSource: 'on-chain', flares,
+    });
+  }
+
+  positions.sort((a, b) => b.daily - a.daily);
+  setLoadingMsg('Done!');
+
+  const data = { totalFlares, totalDaily, positions };
+  try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now() / 1000, data })); } catch {}
+  return { ...data, fromCache: false };
+}
+
+function clearOcCache(addr) {
+  try { localStorage.removeItem(OC_CACHE_PFX + addr); } catch {}
+}
+
+// ── Main loader ────────────────────────────────────────────────────────────────
+async function handleSearch() {
+  const raw = document.getElementById('wallet-input').value.trim();
+  if (!raw) return;
+  const url = new URL(location.href);
+  url.searchParams.set('addr', raw);
+  history.pushState({}, '', url);
+  await loadDashboard(raw);
+}
+
+async function loadDashboard(addr, forceRefresh = false) {
+  setState('loading');
+  setLoadingMsg('Connecting…');
+
+  const rpc = getRpc();
+
+  // ── Path A: on-chain walker (Helius RPC key present) ──────────────────────
+  if (rpc) {
+    if (forceRefresh) clearOcCache(addr);
+    try {
+      await loadQuests();
+      const questList = Object.values(questMap);
+      const result = await computeOnChainFlares(addr, rpc, questList);
+
+      if (!result.positions.length) {
+        setState('error', 'No S2 positions found',
+          'No active Solstice S2 positions were detected on-chain for this wallet. ' +
+          'Make sure you hold USX, eUSX, YT, or LP tokens that qualify for S2 flares.');
+        return;
+      }
+
+      walletState = {
+        addr,
+        currentFlares: result.totalFlares,
+        loyaltyMult:   1.4,   // not readable from chain; user adjusts via dropdown
+        positions:     result.positions,
+        totalDaily:    result.totalDaily,
+        sourceLabel:   result.fromCache ? 'On-chain (cached)' : 'On-chain · Helius',
+        fromCache:     result.fromCache,
+      };
+
+      render();
+      setState('dashboard');
+      return;
+    } catch(e) {
+      setState('error', 'On-chain read failed',
+        `${e.message}. ` +
+        `<a href="#" onclick="loadDashboard('${addr}')">Retry</a>`);
+      return;
+    }
+  }
+
+  // ── Path B: Hanyon index fallback (no RPC key) ─────────────────────────────
+  setLoadingMsg('Loading from index…', 'Add a Helius RPC key for real-time on-chain data');
+  let walletJson = null;
+  try {
+    const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(addr)}.json`);
+    if (res.status === 404) {
+      setState('error', 'Wallet not indexed yet',
+        'This wallet hasn\'t been picked up by the analytics indexer yet. ' +
+        'Add a <strong>Helius RPC key</strong> in the sidebar to read directly from chain — ' +
+        'no indexer required.');
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    walletJson = await res.json();
+  } catch(e) {
+    setState('error', 'Failed to load wallet',
+      `Could not reach the analytics index: ${e.message}. ` +
+      'Add a Helius RPC key to bypass the index entirely.');
+    return;
+  }
+
+  // On-chain balance enrichment (best-effort)
+  let onChainBals = null;
+  try { onChainBals = await fetchOnChain(addr); } catch {}
+
+  const emByQ = walletJson.daily_emission_by_quest || {};
+  const positions = [];
+  let totalDaily = 0;
+
+  for (const [code, daily] of Object.entries(emByQ)) {
+    if (!daily || daily <= 0) continue;
+    const q = getQuest(code);
+    totalDaily += daily;
+    let balance = null, balSource = 'est';
+    if (onChainBals && q.mint && onChainBals[q.mint]) {
+      balance = onChainBals[q.mint]; balSource = 'on-chain';
+    } else if (q.mult > 0) {
+      balance = daily / q.mult;
+    }
+    positions.push({ code, label: q.label, type: q.type, mult: q.mult, matTs: q.matTs, daily, balance, balSource });
+  }
+
+  positions.sort((a, b) => b.daily - a.daily);
+
+  const currentFlares = walletJson.total_flares ?? 0;
+  const loyaltyMult   = walletJson.loyalty_multiplier ?? 1.4;
+  const multSel = document.getElementById('proj-your-mult');
+  const opts = [1.4, 1.3, 1.2, 1.0];
+  multSel.value = String(opts.reduce((a, b) => Math.abs(b - loyaltyMult) < Math.abs(a - loyaltyMult) ? b : a));
+
+  walletState = { addr, currentFlares, loyaltyMult, positions, totalDaily, sourceLabel: 'Hanyon index', fromCache: false };
+  render();
+  setState('dashboard');
+}
+
+// ── Rerender on multiplier change ─────────────────────────────────────────────
+function rerender() { if (walletState) render(); }
+
+// ── Render all ────────────────────────────────────────────────────────────────
+function render() {
+  const { addr, currentFlares, loyaltyMult, positions, totalDaily, sourceLabel } = walletState;
+  const yourMult = parseFloat(document.getElementById('proj-your-mult').value) || loyaltyMult;
+  const avgMult  = parseFloat(document.getElementById('proj-avg-mult').value)  || 1.3;
+  const multRatio = avgMult > 0 ? yourMult / avgMult : 1;
+
+  renderHero(addr, currentFlares, loyaltyMult, totalDaily);
+  renderStats(currentFlares, positions, totalDaily, multRatio);
+  renderPositions(positions, totalDaily, sourceLabel);
+  renderProjections(currentFlares, positions, totalDaily, multRatio);
+  renderOptimizer();
+  renderFDV(currentFlares, positions, totalDaily, multRatio);
+  renderCountdown();
+}
+
+// ── Hero ──────────────────────────────────────────────────────────────────────
+function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
+  const { sourceLabel, fromCache } = walletState;
+  const multCls    = loyaltyMult >= 1.4 ? 'badge-green' : loyaltyMult >= 1.2 ? 'badge-orange' : 'badge-muted';
+  const isOnChain  = sourceLabel.includes('Helius') || sourceLabel.includes('On-chain');
+  const badgeCls   = isOnChain ? (fromCache ? 'cached' : 'live') : 'hanyon';
+  const badgeTxt   = isOnChain ? (fromCache ? '⏱ On-chain · cached' : '⚡ On-chain · live') : '📦 Hanyon index';
+  const refreshBtn = isOnChain
+    ? `<button class="oc-refresh-btn" onclick="loadDashboard('${addr}', true)">↺ Refresh</button>`
+    : '';
+  const loyaltyNote = isOnChain
+    ? '<span style="font-size:10px;color:var(--text-4);margin-left:6px;">(adjust below if needed)</span>'
+    : '';
+
+  document.getElementById('dash-hero').innerHTML = `
+    <div class="hero-top">
+      <div>
+        <div class="hero-addr-row">
+          <span class="hero-addr" title="${addr}">${shorten(addr)}</span>
+          <button class="copy-btn" onclick="copyAddr('${addr}')">Copy</button>
+          <a class="ext-link" href="https://solscan.io/account/${addr}" target="_blank" rel="noopener">Solscan ↗</a>
+          <a class="ext-link" href="https://app.solstice.finance/earn-flares" target="_blank" rel="noopener">Solstice ↗</a>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="oc-source-badge ${badgeCls}">${badgeTxt}</span>
+          ${refreshBtn}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+        <div class="hero-badges">
+          <span class="badge ${multCls}">${loyaltyMult.toFixed(1)}× Loyalty${loyaltyNote}</span>
+          <span class="badge badge-orange">${fmtShort(totalDaily)} flares/day</span>
+          <a class="badge badge-muted" href="calculator.html?wallet=${encodeURIComponent(addr)}" style="text-decoration:none;">Calculator ↗</a>
+        </div>
+        <button onclick="openShareModal()" style="background:linear-gradient(135deg,rgba(124,106,247,.25),rgba(124,106,247,.15));border:1px solid rgba(124,106,247,.45);color:white;padding:7px 16px;border-radius:8px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:all .15s;white-space:nowrap;" onmouseover="this.style.background='linear-gradient(135deg,rgba(124,106,247,.4),rgba(124,106,247,.25))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(124,106,247,.25),rgba(124,106,247,.15))'">🔗 Share wallet card</button>
+      </div>
+    </div>
+    <div class="hero-bottom">
+      <div class="hero-eyebrow">${isOnChain ? 'Accumulated flares (computed on-chain)' : 'Total accumulated flares'}</div>
+      <div class="hero-num">${fmtShort(currentFlares)}<span class="hero-num-unit">flares</span></div>
+      <div class="hero-sub">${fmt(currentFlares)} · Solstice Season 2 · ${utcDate()}</div>
+    </div>
+  `;
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats(currentFlares, positions, totalDaily, multRatio) {
+  const daysLeft = daysUntil(SEASON_END);
+  const sysEnd   = sysNow + sysDaily * daysLeft;
+
+  // Compute projected user flares (per-position YT maturity)
+  let projUser = currentFlares;
+  for (const p of positions) {
+    if (p.type === 'YT' && p.matTs) {
+      const dToMat = Math.min(daysLeft, daysUntilTs(p.matTs));
+      projUser += p.daily * dToMat;
+    } else {
+      projUser += p.daily * daysLeft;
+    }
+  }
+
+  const share  = sysEnd > 0 ? (projUser / sysEnd) * multRatio : 0;
+  const slxEst = share * SLX_SUPPLY * AIRDROP_PCT;
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Daily emission</div>
+      <div class="stat-val orange">${fmtShort(totalDaily)}</div>
+      <div class="stat-sub">flares per day</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Network share</div>
+      <div class="stat-val">${(share*100).toFixed(5)}%</div>
+      <div class="stat-sub">est. at season end</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Est. SLX (3% drop)</div>
+      <div class="stat-val green">${fmtShort(slxEst)}</div>
+      <div class="stat-sub">at current trajectory</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Days remaining</div>
+      <div class="stat-val">${daysLeft}</div>
+      <div class="stat-sub">until Aug 1, 2026</div>
+    </div>
+  `;
+}
+
+// ── Positions ─────────────────────────────────────────────────────────────────
+function renderPositions(positions, totalDaily, sourceLabel) {
+  document.getElementById('source-label').textContent = sourceLabel;
+
+  const tbody = document.getElementById('pos-tbody');
+  if (!positions.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text-4);font-size:12px;">No active positions found in index</td></tr>`;
+    document.getElementById('pos-footer').innerHTML = '';
+    return;
+  }
+
+  tbody.innerHTML = positions.map(p => {
+    const pct    = totalDaily > 0 ? p.daily / totalDaily * 100 : 0;
+    const typCls = p.type==='YT' ? 'type-yt' : p.type==='LP' ? 'type-lp' : p.type==='HOLD' ? 'type-hold' : 'type-unk';
+    const balStr = p.balance != null ? fmtShort(p.balance) : '—';
+    const matNote = (p.type==='YT' && p.matTs) ? `matures ${daysUntilTs(p.matTs).toFixed(0)}d` : '';
+    return `<tr>
+      <td>
+        <span class="type-badge ${typCls}">${p.type}</span><span class="pos-name">${p.label}</span>
+        ${matNote ? `<div class="pos-detail">${matNote} remaining</div>` : ''}
+      </td>
+      <td>
+        <div class="pos-bal">${balStr}</div>
+        <div class="pos-bal-hint">${p.balSource}</div>
+      </td>
+      <td><div class="pos-mult">${p.mult}×</div></td>
+      <td>
+        <div class="pos-daily">${fmt(p.daily)}/d</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${Math.min(pct,100).toFixed(1)}%"></div></div>
+        <div class="pos-share">${pct.toFixed(1)}%</div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pos-footer').innerHTML = `
+    <div><strong>${fmt(totalDaily)}</strong> flares/day total · ${positions.length} active position${positions.length!==1?'s':''}</div>
+    <div style="color:var(--text-4);font-size:10px;">LP/lend/borrow may require protocol-level indexing</div>
+  `;
+}
+
+// ── Projection timeline ───────────────────────────────────────────────────────
+function renderProjections(currentFlares, positions, totalDaily, multRatio) {
+  const daysLeft = daysUntil(SEASON_END);
+
+  const checkpoints = [
+    { label:'Today',       days:0 },
+    { label:'+7 days',     days:7 },
+    { label:'+14 days',    days:14 },
+    { label:'+30 days',    days:30 },
+    { label:'Season end',  days:daysLeft, final:true },
+  ];
+
+  function projUserAt(days) {
+    let f = currentFlares;
+    for (const p of positions) {
+      let d = days;
+      if (p.type === 'YT' && p.matTs) d = Math.min(days, daysUntilTs(p.matTs));
+      f += p.daily * d;
+    }
+    return f;
+  }
+
+  document.getElementById('proj-tbody').innerHTML = checkpoints.map(c => {
+    const userF = projUserAt(c.days);
+    const sysF  = sysNow + sysDaily * c.days;
+    const share = sysF > 0 ? (userF / sysF) * multRatio : 0;
+    const slx   = share * SLX_SUPPLY * AIRDROP_PCT;
+    const rowCls = c.final ? 'proj-end' : c.days===0 ? 'proj-today' : '';
+    return `<tr class="${rowCls}">
+      <td class="p-label">${c.label}</td>
+      <td class="p-flares">${fmtShort(userF)}</td>
+      <td class="p-share">${(share*100).toFixed(4)}%</td>
+      <td class="p-slx">${fmtShort(slx)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── FDV grid ──────────────────────────────────────────────────────────────────
+function renderFDV(currentFlares, positions, totalDaily, multRatio) {
+  const daysLeft = daysUntil(SEASON_END);
+
+  let projUser = currentFlares;
+  for (const p of positions) {
+    const d = (p.type==='YT' && p.matTs) ? Math.min(daysLeft, daysUntilTs(p.matTs)) : daysLeft;
+    projUser += p.daily * d;
+  }
+  const sysEnd = sysNow + sysDaily * daysLeft;
+  const share  = sysEnd > 0 ? (projUser / sysEnd) * multRatio : 0;
+  const slx    = share * SLX_SUPPLY * AIRDROP_PCT;
+
+  document.getElementById('fdv-grid').innerHTML = FDV_M.map(fdvM => {
+    const price = (fdvM * 1e6) / SLX_SUPPLY;
+    const usd   = slx * price;
+    return `<div class="fdv-card">
+      <div class="fdv-label">$${fdvM}M FDV</div>
+      <div class="fdv-price">$${price.toFixed(3)}/SLX</div>
+      <div class="fdv-usd">$${fmt(usd)}</div>
+      <div class="fdv-slx">${fmtShort(slx)} SLX</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Countdown strip ───────────────────────────────────────────────────────────
+function renderCountdown() {
+  const strip = document.getElementById('countdown-strip');
+  if (!strip) return;
+  const daysLeft   = daysUntil(SEASON_END);
+  const seasonStart = new Date('2025-12-01T00:00:00Z');
+  const seasonEnd   = new Date(SEASON_END + 'T00:00:00Z');
+  const pct = Math.min(100, Math.max(0,
+    (Date.now() - seasonStart) / (seasonEnd - seasonStart) * 100));
+
+  let paceHtml = '';
+  if (walletState) {
+    const { totalDaily, currentFlares } = walletState;
+    // pace = user's daily share vs current share — are they growing or shrinking?
+    const userShareNow   = sysNow   > 0 ? currentFlares / sysNow   : 0;
+    const userShareDaily = sysDaily > 0 ? totalDaily    / sysDaily  : 0;
+    const ratio = userShareNow > 0 ? userShareDaily / userShareNow : 1;
+    let pcls, plabel;
+    if      (ratio >= 1.04)  { pcls = 'pace-ahead';   plabel = 'Gaining share'; }
+    else if (ratio < 0.96)   { pcls = 'pace-behind';  plabel = 'Losing share'; }
+    else                     { pcls = 'pace-neutral';  plabel = 'Holding pace'; }
+    paceHtml = `
+      <span class="cd-sep">·</span>
+      <div class="cd-item"><span class="cd-label">Daily</span><span class="cd-val">${fmtShort(totalDaily)}/d</span></div>
+      <span class="cd-sep">·</span>
+      <div class="cd-item"><span class="cd-label">Pace</span><span class="pace-pill ${pcls}">${plabel}</span></div>`;
+  }
+
+  strip.innerHTML = `
+    <div class="cd-item"><span class="cd-label">Season end</span><span class="cd-val">${daysLeft}d left</span></div>
+    <div class="cd-bar-wrap"><div class="cd-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>
+    <div class="cd-item"><span class="cd-label">Progress</span><span class="cd-val" style="color:var(--text-3)">${pct.toFixed(0)}%</span></div>
+    ${paceHtml}`;
+}
+
+// ── Share card ────────────────────────────────────────────────────────────────
+function openShareModal() {
+  if (!walletState) return;
+  renderShareCardContent();
+  const link = location.origin + location.pathname + '?addr=' + encodeURIComponent(walletState.addr);
+  document.getElementById('share-link-box').textContent = link;
+  document.getElementById('share-modal').style.display = 'flex';
+}
+function closeShareModal(e) {
+  if (!e || e.target === document.getElementById('share-modal')) {
+    document.getElementById('share-modal').style.display = 'none';
+  }
+}
+function renderShareCardContent() {
+  if (!walletState) return;
+  const { addr, currentFlares, loyaltyMult, positions, totalDaily } = walletState;
+  const yourMult  = parseFloat(document.getElementById('proj-your-mult').value) || loyaltyMult;
+  const avgMult   = parseFloat(document.getElementById('proj-avg-mult').value)  || 1.3;
+  const multRatio = avgMult > 0 ? yourMult / avgMult : 1;
+  const fdvM      = parseInt(document.getElementById('share-fdv').value) || 100;
+  const daysLeft  = daysUntil(SEASON_END);
+  let projUser = currentFlares;
+  for (const p of positions) {
+    const d = (p.type==='YT' && p.matTs) ? Math.min(daysLeft, daysUntilTs(p.matTs)) : daysLeft;
+    projUser += p.daily * d;
+  }
+  const sysEnd = sysNow + sysDaily * daysLeft;
+  const share  = sysEnd > 0 ? (projUser / sysEnd) * multRatio : 0;
+  const slx    = share * SLX_SUPPLY * AIRDROP_PCT;
+  const price  = (fdvM * 1e6) / SLX_SUPPLY;
+  const usd    = slx * price;
+  const multColor = loyaltyMult >= 1.4 ? '#4ade80' : loyaltyMult >= 1.2 ? '#a78bfa' : 'rgba(255,255,255,.5)';
+
+  // Build compact positions rows (top 5 by daily, rest collapsed into "others")
+  const sorted  = [...positions].sort((a,b) => b.daily - a.daily);
+  const topPos  = sorted.slice(0, 5);
+  const restPos = sorted.slice(5);
+  const restDaily = restPos.reduce((s,p) => s + p.daily, 0);
+
+  const badgeCls = t => t==='YT' ? 'sc-pos-yt' : t==='LP' ? 'sc-pos-lp' : t==='HOLD' ? 'sc-pos-hold' : 'sc-pos-unk';
+  const barColor = t => t==='YT' ? '#fbbf24' : t==='LP' ? '#22d3ee' : '#7c6af7';
+
+  const posRows = topPos.map(p => {
+    const pct = totalDaily > 0 ? p.daily / totalDaily * 100 : 0;
+    return `<div class="sc-pos-row">
+      <span class="sc-pos-badge ${badgeCls(p.type)}">${p.type}</span>
+      <span class="sc-pos-name">${p.label}</span>
+      <div class="sc-pos-bar"><div class="sc-pos-bar-fill" style="width:${Math.min(pct,100).toFixed(1)}%;background:${barColor(p.type)}"></div></div>
+      <span class="sc-pos-daily">${fmtShort(p.daily)}/d</span>
+    </div>`;
+  }).join('');
+
+  const othersRow = restPos.length > 0 ? `
+    <div class="sc-pos-row">
+      <span class="sc-pos-badge sc-pos-unk">+${restPos.length}</span>
+      <span class="sc-pos-name" style="color:rgba(255,255,255,.3)">other positions</span>
+      <span class="sc-pos-daily" style="color:rgba(255,255,255,.3)">${fmtShort(restDaily)}/d</span>
+    </div>` : '';
+
+  const posSection = positions.length > 0 ? `
+    <div class="sc-positions">
+      <div class="sc-pos-label">Active positions</div>
+      ${posRows}${othersRow}
+    </div>` : '';
+
+  document.getElementById('share-card-content').innerHTML = `
+    <div class="share-card">
+      <div class="sc-brand">AnalytiQ · Solstice S2 Tracker</div>
+      <div class="sc-addr">${shorten(addr)}</div>
+      <span class="sc-big">${fmtShort(currentFlares)}</span><span class="sc-unit">flares</span>
+      <div class="sc-stats">
+        <div class="sc-stat"><span class="sc-stat-label">Daily</span><span class="sc-stat-val">${fmtShort(totalDaily)}/d</span></div>
+        <div class="sc-stat"><span class="sc-stat-label">Est. SLX</span><span class="sc-stat-val">${fmtShort(slx)}</span></div>
+        <div class="sc-stat"><span class="sc-stat-label">Share</span><span class="sc-stat-val">${(share*100).toFixed(4)}%</span></div>
+        <div class="sc-stat"><span class="sc-stat-label">Loyalty</span><span class="sc-stat-val" style="color:${multColor}">${loyaltyMult.toFixed(1)}×</span></div>
+      </div>
+      ${posSection}
+      <div class="sc-fdv-box">
+        <div>
+          <div class="sc-fdv-label">Est. value at $${fdvM}M FDV</div>
+          <div class="sc-fdv-usd">$${fmt(usd)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="sc-fdv-label">Per SLX</div>
+          <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.65)">$${price.toFixed(3)}</div>
+        </div>
+      </div>
+      <div class="sc-ref">analytiq.solstice · ref: JxeE7iMzNm · ${utcDate()}</div>
+    </div>`;
+}
+function copyShareLink() {
+  if (!walletState) return;
+  const link = location.origin + location.pathname + '?addr=' + encodeURIComponent(walletState.addr);
+  navigator.clipboard.writeText(link).catch(()=>{});
+  const btn = document.getElementById('share-copy-btn');
+  if (btn) { const t=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=t,1500); }
+}
+
+async function copyCardAsImage() {
+  const card = document.querySelector('#share-card-content .share-card');
+  const btn  = document.getElementById('copy-img-btn');
+  if (!card || !btn) return;
+
+  const origText = btn.textContent;
+  btn.textContent = 'Rendering…';
+  btn.disabled = true;
+
+  try {
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: null,
+      logging: false,
+      removeContainer: true,
+    });
+
+    canvas.toBlob(async blob => {
+      let copied = false;
+      // Try modern clipboard API (Chrome/Edge, requires HTTPS)
+      if (navigator.clipboard?.write) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          copied = true;
+        } catch(_) {}
+      }
+
+      if (copied) {
+        btn.textContent = '✓ Image copied!';
+      } else {
+        // Fallback: download as PNG
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = `solstice-wallet-${walletState?.addr?.slice(0,8) ?? 'card'}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        btn.textContent = '⬇ Downloaded!';
+      }
+
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = origText; }, 2000);
+    }, 'image/png');
+
+  } catch(e) {
+    console.error('html2canvas error:', e);
+    btn.textContent = 'Failed';
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = origText; }, 2000);
+  }
+}
+
+// ── Position optimizer ────────────────────────────────────────────────────────
+// Each "from" position gets a list of candidate upgrades; best effDays wins
+const UPGRADE_CANDIDATES = [
+  { fromCode:'S2_HOLD_USX_DAILY',         toLabel:'YT USX Sep26',  toMult:30, matTs:YT_MAT_TS_SEP, icon:'⚡' },
+  { fromCode:'S2_HOLD_USX_DAILY',         toLabel:'YT USX Jun26',  toMult:30, matTs:YT_MAT_TS,     icon:'⚡' },
+  { fromCode:'S2_HOLD_EUSX_DAILY',        toLabel:'YT eUSX Sep26', toMult:15, matTs:YT_MAT_TS_SEP, icon:'⚡' },
+  { fromCode:'S2_HOLD_EUSX_DAILY',        toLabel:'YT eUSX Jun26', toMult:15, matTs:YT_MAT_TS,     icon:'⚡' },
+  { fromCode:'S2_KAMINO_KVAULT_USDG_USX', toLabel:'YT USX Sep26',  toMult:30, matTs:YT_MAT_TS_SEP, icon:'🔄' },
+  { fromCode:'S2_KAMINO_KVAULT_USDG_USX', toLabel:'YT USX Jun26',  toMult:30, matTs:YT_MAT_TS,     icon:'🔄' },
+];
+function renderOptimizer() {
+  const sec  = document.getElementById('opt-section');
+  const grid = document.getElementById('opt-grid');
+  if (!walletState || !sec || !grid) return;
+  const { positions, currentFlares, loyaltyMult } = walletState;
+  if (!positions.length) { sec.style.display='none'; return; }
+
+  const yourMult  = parseFloat(document.getElementById('proj-your-mult').value) || loyaltyMult;
+  const avgMult   = parseFloat(document.getElementById('proj-avg-mult').value)  || 1.3;
+  const multRatio = avgMult > 0 ? yourMult / avgMult : 1;
+  const daysLeft  = daysUntil(SEASON_END);
+  const sysEnd    = sysNow + sysDaily * daysLeft;
+  const posMap    = Object.fromEntries(positions.map(p => [p.code, p]));
+  const suggestions = [];
+  const seenFrom  = new Set(); // one suggestion per fromCode
+
+  // Pick best available upgrade per from-code (most remaining days, >= 7)
+  for (const path of UPGRADE_CANDIDATES) {
+    if (seenFrom.has(path.fromCode)) continue;
+    const pos = posMap[path.fromCode];
+    if (!pos) continue;
+    const dToMat  = daysUntilTs(path.matTs);
+    const effDays = Math.min(daysLeft, dToMat);
+    if (effDays < 7) continue; // try next candidate for same fromCode
+    seenFrom.add(path.fromCode);
+    const dailyGain = pos.daily * (path.toMult / pos.mult - 1);
+    const totalGain = dailyGain * effDays;
+    const addlSlx   = sysEnd > 0 ? (totalGain / sysEnd) * multRatio * SLX_SUPPLY * AIRDROP_PCT : 0;
+    suggestions.push({
+      icon: path.icon,
+      title: `Upgrade ${pos.label} → ${path.toLabel}`,
+      desc: `Converting from <strong>${pos.mult}×</strong> to <strong>${path.toMult}×</strong> multiplier adds <strong>+${fmtShort(dailyGain)} flares/day</strong> (${(path.toMult/pos.mult).toFixed(1)}× more). That's <strong>+${fmtShort(totalGain)} flares</strong> over the ${effDays.toFixed(0)}d remaining before maturity.`,
+      gainPerDay: dailyGain, addlSlx,
+    });
+  }
+
+  // No YT positions at all → general tip
+  const hasYT = positions.some(p => p.type==='YT');
+  if (!hasYT) {
+    const effDays = Math.min(daysLeft, daysUntilTs(YT_MAT_TS));
+    const biggest = positions.reduce((a,b) => b.daily>a.daily ? b : a, positions[0]);
+    if (biggest && effDays > 7) {
+      const hypoDaily = biggest.daily / biggest.mult * 30;
+      const dailyGain = hypoDaily - biggest.daily;
+      const totalGain = dailyGain * effDays;
+      const addlSlx   = sysEnd > 0 ? (totalGain / sysEnd) * multRatio * SLX_SUPPLY * AIRDROP_PCT : 0;
+      suggestions.push({
+        icon:'💡',
+        title:'Consider YT positions (highest multiplier)',
+        desc:`YT USX Jun26 carries a <strong>30× flare multiplier</strong> — the highest in S2. Equivalent capital in a YT position would earn ~${(30/biggest.mult).toFixed(1)}× more flares than your current top position (${biggest.label} at ${biggest.mult}×).`,
+        gainPerDay: dailyGain, addlSlx,
+      });
+    }
+  }
+
+  // Loyalty multiplier gap
+  if (loyaltyMult < 1.39) {
+    let projUser = currentFlares;
+    for (const p of positions) {
+      const d = (p.type==='YT'&&p.matTs) ? Math.min(daysLeft,daysUntilTs(p.matTs)) : daysLeft;
+      projUser += p.daily * d;
+    }
+    const curSlx = sysEnd>0 ? (projUser/sysEnd)*(loyaltyMult/avgMult)*SLX_SUPPLY*AIRDROP_PCT : 0;
+    const maxSlx = sysEnd>0 ? (projUser/sysEnd)*(1.4/avgMult)*SLX_SUPPLY*AIRDROP_PCT : 0;
+    const addlSlx = maxSlx - curSlx;
+    suggestions.push({
+      icon:'🔒',
+      title:`Maximize loyalty multiplier (${loyaltyMult.toFixed(1)}× → 1.4×)`,
+      desc:`Your loyalty is <strong>${loyaltyMult.toFixed(1)}×</strong>. Reaching <strong>1.4×</strong> (retain ≥100% of S1 TVL) boosts your effective share by <strong>${((1.4/loyaltyMult-1)*100).toFixed(0)}%</strong> with no new capital required.`,
+      gainPerDay: null, addlSlx,
+    });
+  }
+
+  if (!suggestions.length) {
+    sec.style.display='';
+    grid.innerHTML=`<div class="opt-empty">✅ Your positions look well-optimized for current S2 quests.</div>`;
+    return;
+  }
+  suggestions.sort((a,b)=>b.addlSlx-a.addlSlx);
+  sec.style.display='';
+  grid.innerHTML = suggestions.map(s=>`
+    <div class="opt-card">
+      <div class="opt-icon">${s.icon}</div>
+      <div class="opt-body">
+        <div class="opt-title">${s.title}</div>
+        <div class="opt-desc">${s.desc}</div>
+      </div>
+      <div class="opt-gain">
+        <div class="opt-gain-val">+${fmtShort(s.addlSlx)} SLX</div>
+        <div class="opt-gain-sub">est. additional${s.gainPerDay!=null?`<br>+${fmtShort(s.gainPerDay)}/day`:''}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function copyAddr(addr) {
+  navigator.clipboard.writeText(addr).catch(()=>{});
+  const btn = document.querySelector('.copy-btn');
+  if (btn) { const t=btn.textContent; btn.textContent='Copied!'; setTimeout(()=>btn.textContent=t,1500); }
+}
+
+function setState(s, title='', body='') {
+  document.getElementById('st-empty').style.display    = s==='empty'    ? '' : 'none';
+  document.getElementById('st-loading').style.display  = s==='loading'  ? '' : 'none';
+  document.getElementById('st-error').style.display    = s==='error'    ? '' : 'none';
+  document.getElementById('dashboard').style.display   = s==='dashboard'? '' : 'none';
+  if (s==='error') {
+    document.getElementById('err-title').textContent = title;
+    document.getElementById('err-body').textContent  = body;
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  await Promise.all([loadQuests(), loadSystem()]);
+  renderCountdown(); // show season progress immediately
+  const addr = new URLSearchParams(location.search).get('addr') || '';
+  if (addr) {
+    document.getElementById('wallet-input').value = addr;
+    await loadDashboard(addr);
+  } else {
+    setState('empty');
+  }
+})();
+</script>
+</body>
+</html>

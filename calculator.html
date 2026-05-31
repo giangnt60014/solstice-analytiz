@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solstice S2 Calculator</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:       #060a16;
+  --navy-2:     #0a1020;
+  --navy-3:     #10192e;
+  --bg:         #0a1020;
+  --surface:    #0f1928;
+  --surface-2:  #141f32;
+  --border:     rgba(255,255,255,.09);
+  --text-1:     #e8eeff;
+  --text-2:     #7e92be;
+  --text-3:     #485e82;
+  --text-4:     #2b3d5e;
+  --orange:     #7c6af7;
+  --orange-lt:  rgba(124,106,247,.14);
+  --orange-dk:  #6355d8;
+  --green:      #22c55e;
+  --green-lt:   rgba(34,197,94,.12);
+  --red:        #ef4444;
+  --amber:      #fbbf24;
+  --cyan:       #22d3ee;
+  --radius-sm:  6px;
+  --radius:     10px;
+  --radius-lg:  16px;
+  --sidebar-w:  340px;
+}
+html { background: var(--bg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; color: var(--text-1); }
+body { min-height: 100vh; }
+
+/* ── Header ── */
+.header {
+  background: var(--navy);
+  padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; position: sticky; top: 0; z-index: 200;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.header-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 800; font-size: 15px; letter-spacing: -0.02em; text-decoration: none; }
+.header-badge { background: var(--orange); color: white; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-left: 2px; }
+.header-nav { display: flex; align-items: center; gap: 18px; }
+.header-nav a { color: rgba(255,255,255,.45); font-size: 12px; font-weight: 600; text-decoration: none; letter-spacing: .02em; transition: color .15s; }
+.header-nav a:hover { color: white; }
+.header-nav .open-app { background: linear-gradient(135deg, var(--orange-dk), var(--orange)); color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+.header-nav .open-app:hover { opacity: .88; color: white; }
+
+/* ── App shell: sidebar + main ── */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: calc(100vh - 52px);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  background: var(--navy);
+  position: sticky; top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: 28px 20px;
+  display: flex; flex-direction: column; gap: 0;
+  scrollbar-width: thin; scrollbar-color: var(--navy-3) transparent;
+  border-right: 1px solid rgba(255,255,255,.07);
+}
+.sidebar-section { margin-bottom: 22px; }
+.sidebar-section:last-child { margin-bottom: 0; }
+
+.sidebar-label {
+  font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(255,255,255,.3); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sidebar-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.07); }
+
+.s-field { margin-bottom: 12px; }
+.s-field:last-child { margin-bottom: 0; }
+.s-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.38); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; display: block; }
+input[type=text].s-input, input[type=date].s-input, select.s-select {
+  width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  color: white; padding: 9px 11px; border-radius: var(--radius-sm);
+  font: inherit; font-size: 13px; transition: border-color .15s, background .15s;
+  appearance: none; -webkit-appearance: none;
+}
+input[type=text].s-input:focus, input[type=date].s-input:focus, select.s-select:focus {
+  outline: none; border-color: var(--orange); background: rgba(255,255,255,.08);
+}
+input[type=text].s-input::placeholder { color: rgba(255,255,255,.2); }
+select.s-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,.35)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer;
+}
+select.s-select option { background: var(--navy-2); color: white; }
+.s-hint { font-size: 10px; color: rgba(255,255,255,.24); margin-top: 4px; line-height: 1.4; }
+.s-hint.live { color: rgba(124,106,247,.8); }
+
+.s-btn {
+  width: 100%; background: linear-gradient(135deg, var(--orange-dk), var(--orange)); color: white; border: none;
+  padding: 10px; border-radius: var(--radius-sm); font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.s-btn:hover { opacity: .85; }
+
+.s-error { color: #fca5a5; font-size: 11px; margin-top: 6px; }
+.s-source { font-size: 10px; color: rgba(255,255,255,.28); margin-top: 5px; }
+
+/* ── Sidebar live mini-result ── */
+.sidebar-result {
+  margin-top: auto; padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.sidebar-result-label { font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.25); margin-bottom: 10px; }
+.sidebar-result-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.sidebar-result-key { font-size: 11px; color: rgba(255,255,255,.35); }
+.sidebar-result-val { font-size: 13px; font-weight: 700; color: white; font-variant-numeric: tabular-nums; }
+.sidebar-result-val.accent { color: var(--orange); }
+
+/* ── Main ── */
+.main { padding: 32px 32px 64px; background: var(--bg); }
+
+/* ── Hero block ── */
+.hero-block {
+  background: linear-gradient(135deg, #0e1936 0%, #111b48 55%, #160f58 100%);
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+  margin-bottom: 24px;
+  position: relative; overflow: hidden;
+  border: 1px solid rgba(124,106,247,.18);
+}
+.hero-block::before {
+  content: ''; position: absolute; right: -40px; top: -40px;
+  width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,106,247,.22) 0%, transparent 70%);
+}
+.hero-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--orange); margin-bottom: 10px; }
+.hero-slx {
+  font-size: 52px; font-weight: 900; letter-spacing: -0.04em; color: white;
+  line-height: 1; font-variant-numeric: tabular-nums;
+}
+.hero-slx-unit { font-size: 20px; font-weight: 700; color: rgba(255,255,255,.38); margin-left: 6px; }
+.hero-sub { font-size: 13px; color: rgba(255,255,255,.45); margin-top: 8px; }
+.hero-sub .hl { color: var(--orange); font-weight: 700; }
+
+/* ── Metrics strip ── */
+.metrics {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 14px; margin-bottom: 24px;
+}
+.metric-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.metric-card .m-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--text-3); margin-bottom: 6px; }
+.metric-card .m-val { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.metric-card .m-val.orange { color: var(--orange); }
+.metric-card .m-sub { font-size: 11px; color: var(--text-4); margin-top: 3px; }
+
+/* ── Section heading ── */
+.section-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.section-head h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--text-3); }
+.section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── FDV cards ── */
+.fdv-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 12px; margin-bottom: 24px;
+}
+.fdv-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; cursor: default;
+  transition: border-color .2s, box-shadow .2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.fdv-card:hover { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(124,106,247,.14); }
+.fdv-card .c-fdv { font-size: 11px; font-weight: 800; color: var(--text-3); letter-spacing: .04em; }
+.fdv-card .c-price { font-size: 10px; color: var(--text-4); margin-top: 1px; }
+.fdv-card .c-usd { font-size: 18px; font-weight: 800; color: var(--text-1); margin-top: 8px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.fdv-card .c-roi { font-size: 11px; font-weight: 700; margin-top: 3px; color: var(--text-4); }
+.fdv-card .c-roi.pos { color: var(--green); }
+.fdv-card .c-roi.neg { color: var(--red); }
+
+/* ── Notes ── */
+.notes-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px;
+  font-size: 12px; color: var(--text-2); line-height: 1.75;
+}
+.notes-box strong { color: var(--text-1); }
+.notes-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.notes-tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .04em; }
+
+/* ── Breakdown rows ── */
+.bk-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+  gap: 8px;
+}
+.bk-row:last-child { border-bottom: none; }
+.bk-name { font-size: 11px; color: rgba(255,255,255,.6); line-height: 1.3; flex:1; }
+.bk-badge {
+  font-size: 9px; font-weight: 800; letter-spacing: .06em;
+  padding: 1px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+}
+.bk-badge.yt   { background: rgba(251,191,36,.18); color: var(--amber); }
+.bk-badge.hold { background: rgba(255,255,255,.07); color: rgba(255,255,255,.45); }
+.bk-badge.lp   { background: rgba(34,211,238,.14); color: var(--cyan); }
+.bk-daily { font-size: 12px; font-weight: 700; color: white; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; flex-shrink: 0; }
+
+#hover-tooltip {
+  position: fixed; pointer-events: none; z-index: 9999;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  font-size: 12px; color: var(--text-1); box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  opacity: 0; transition: opacity .08s; white-space: pre-line;
+}
+#hover-tooltip.visible { opacity: 1; }
+
+/* ── YT Projector ── */
+.yt-projector {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px 24px; margin-bottom: 0;
+}
+.yt-intro {
+  font-size: 12px; color: var(--text-2); margin-bottom: 18px; line-height: 1.5;
+}
+.yt-intro a { color: rgba(251,191,36,.75); text-decoration: none; font-weight: 700; }
+.yt-intro a:hover { color: var(--amber); }
+.yt-inputs {
+  display: grid; grid-template-columns: 1fr 1.8fr 0.9fr;
+  gap: 14px; margin-bottom: 20px;
+}
+.yt-input-group { display: flex; flex-direction: column; gap: 5px; }
+.yt-input-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: rgba(255,255,255,.38);
+}
+.yt-input {
+  width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  color: white; padding: 9px 11px; border-radius: var(--radius-sm);
+  font: inherit; font-size: 13px; transition: border-color .15s, background .15s;
+}
+.yt-input:focus { outline: none; border-color: rgba(251,191,36,.7); background: rgba(255,255,255,.08); }
+.yt-input::placeholder { color: rgba(255,255,255,.2); }
+.yt-select {
+  width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  color: white; padding: 9px 28px 9px 11px; border-radius: var(--radius-sm);
+  font: inherit; font-size: 13px; cursor: pointer; appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,.35)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color .15s;
+}
+.yt-select:focus { outline: none; border-color: rgba(251,191,36,.7); }
+.yt-select option { background: var(--navy-2); color: white; }
+.yt-outputs-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 14px; margin-bottom: 20px;
+}
+.yt-out-item {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+}
+.yt-out-item.is-total { border-color: rgba(251,191,36,.3); }
+.yt-out-label {
+  font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .14em; color: var(--text-3); margin-bottom: 6px;
+}
+.yt-out-val {
+  font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
+  color: var(--text-1); font-variant-numeric: tabular-nums;
+}
+.yt-out-val.amber { color: var(--amber); }
+.yt-out-sub { font-size: 10px; color: var(--text-3); margin-top: 3px; line-height: 1.4; }
+.yt-use-btn {
+  margin-top: 10px; width: 100%;
+  background: linear-gradient(135deg, rgba(251,191,36,.2), rgba(251,191,36,.12));
+  border: 1px solid rgba(251,191,36,.4); color: var(--amber);
+  padding: 7px 12px; border-radius: 6px; font: inherit;
+  font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: .03em;
+  transition: all .15s;
+}
+.yt-use-btn:hover { background: rgba(251,191,36,.22); border-color: rgba(251,191,36,.6); }
+.yt-fdv-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.yt-fdv-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.yt-fdv-table th {
+  text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--text-3); padding: 9px 14px;
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.yt-fdv-table th:not(:first-child) { text-align: right; }
+.yt-fdv-table td {
+  padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,.04);
+  font-variant-numeric: tabular-nums; color: var(--text-2);
+}
+.yt-fdv-table td:not(:first-child) { text-align: right; }
+.yt-fdv-table td:first-child { font-weight: 700; color: var(--text-1); }
+.yt-fdv-table td:last-child { font-weight: 700; }
+.yt-fdv-table td.pos { color: var(--green); }
+.yt-fdv-table td.neg { color: #ef4444; }
+.yt-fdv-table tr:last-child td { border-bottom: none; }
+.yt-fdv-table tr.yt-be-row { background: rgba(251,191,36,.07); }
+.yt-fdv-table tr.yt-be-row td { color: var(--amber) !important; border-bottom: 1px solid rgba(251,191,36,.18); }
+.yt-be-tag {
+  font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  background: rgba(251,191,36,.18); color: var(--amber); padding: 2px 6px;
+  border-radius: 3px; margin-left: 6px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+  .fdv-grid { grid-template-columns: repeat(2, 1fr); }
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .yt-inputs { grid-template-columns: 1fr 1fr; }
+  .yt-outputs-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .fdv-grid { grid-template-columns: 1fr 1fr; }
+  .hero-slx { font-size: 36px; }
+  .yt-inputs { grid-template-columns: 1fr; }
+  .yt-outputs-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="hover-tooltip"></div>
+
+<!-- Header -->
+<header class="header">
+  <a class="header-brand" href="#">
+    <img src="favicon.svg" width="22" height="22" alt="" style="border-radius:5px;">
+    Solstice
+    <span class="header-badge">S2</span>
+  </a>
+  <nav class="header-nav">
+    <a href="#">Dashboard</a>
+    <a href="#">Docs</a>
+    <a href="https://app.solstice.finance/?ref=JxeE7iMzNm" class="open-app" target="_blank" rel="noopener">Open App ↗</a>
+  </nav>
+</header>
+
+<div class="app-shell">
+
+  <!-- ── Sidebar (inputs) ── -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Wallet autofill</div>
+      <div class="s-field">
+        <input id="calc-wallet" type="text" class="s-input" style="font-family:ui-monospace,monospace;font-size:12px;" placeholder="Solana wallet address" autocomplete="new-password" onkeydown="if(event.key==='Enter') calcLoadWallet()">
+      </div>
+      <button class="s-btn" id="wallet-btn" onclick="calcLoadWallet()">Load Wallet</button>
+      <div id="calc-error" class="s-error" style="display:none;"></div>
+      <div id="calc-source" class="s-source"></div>
+    </div>
+
+    <!-- On-chain position breakdown (shown after load) -->
+    <div class="sidebar-section" id="position-breakdown" style="display:none;">
+      <div class="sidebar-label">On-chain positions</div>
+      <div id="breakdown-rows"></div>
+      <div style="margin-top:10px; padding:8px 10px; background:rgba(255,255,255,.04); border-radius:6px;">
+        <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Daily emission</div>
+        <div id="breakdown-daily" style="font-size:15px;font-weight:800;color:var(--orange);font-variant-numeric:tabular-nums;">0 flares/day</div>
+      </div>
+      <div id="breakdown-note" class="s-hint" style="margin-top:6px;"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Your position</div>
+      <div class="s-field">
+        <label class="s-label" for="calc-total">Your flares at end date</label>
+        <input id="calc-total" type="text" class="s-input" value="0" inputmode="decimal" placeholder="e.g. 5M or 5,000,000"
+          oninput="onAmountInput(this)" onblur="onAmountBlur(this)" onfocus="onAmountFocus(this)">
+        <div class="s-hint" id="calc-prefill-hint"></div>
+      </div>
+      <div class="s-field">
+        <label class="s-label" for="calc-sys-total">System total at end date</label>
+        <input id="calc-sys-total" type="text" class="s-input" value="0" inputmode="decimal" placeholder="e.g. 120B"
+          oninput="onSysTotalInput(this)" onblur="onAmountBlur(this)" onfocus="onAmountFocus(this)">
+        <div class="s-hint live" id="calc-sys-hint">Loading from Solstice…</div>
+      </div>
+      <div class="s-field">
+        <label class="s-label" for="calc-end">Season end date</label>
+        <input id="calc-end" type="date" class="s-input" value="2026-08-01" min="2026-04-13" max="2026-12-31" onchange="onEndDateChange()">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Multipliers &amp; allocation</div>
+      <div class="s-field">
+        <label class="s-label" for="calc-your-mult">Your loyalty multiplier</label>
+        <select id="calc-your-mult" class="s-select" onchange="onAnyInput()">
+          <option value="1.4">1.4× — Full Loyalty (TVL ≥ 100%)</option>
+          <option value="1.3">1.3× — Reduced (50–99%)</option>
+          <option value="1.2">1.2× — Minimum (20–49%)</option>
+          <option value="1.0">1.0× — No multiplier</option>
+        </select>
+      </div>
+      <div class="s-field">
+        <label class="s-label" for="calc-avg-mult">Avg loyalty (all participants)</label>
+        <select id="calc-avg-mult" class="s-select" onchange="onAnyInput()">
+          <option value="1.4">1.4× — Everyone full loyalty</option>
+          <option value="1.3" selected>1.3× — Mostly retaining</option>
+          <option value="1.2">1.2× — Mixed retention</option>
+          <option value="1.1">1.1× — Many dropped</option>
+          <option value="1.0">1.0× — Few retained</option>
+        </select>
+      </div>
+      <div class="s-field">
+        <label class="s-label" for="calc-airdrop-pct">S2 SLX allocation</label>
+        <select id="calc-airdrop-pct" class="s-select" onchange="onAnyInput()">
+          <option value="0.03" selected>3.00% — 30M SLX (anchor)</option>
+          <option value="0.0325">3.25% — 32.5M SLX (rumored)</option>
+          <option value="0.035">3.50% — 35M SLX (upside)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- RPC key config -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">
+        On-chain RPC
+        <span id="rpc-live-badge" style="background:rgba(22,163,74,.2);color:#86efac;font-size:8px;padding:1px 6px;border-radius:3px;letter-spacing:.06em;font-weight:800;flex-shrink:0;">LIVE</span>
+      </div>
+      <div class="s-field">
+        <input id="rpc-key-input" type="text" class="s-input" style="font-family:ui-monospace,monospace;font-size:11px;" placeholder="Custom Helius key (optional override)">
+        <div class="s-hint" style="margin-top:5px;">Built-in key active. Paste your own to override.</div>
+      </div>
+      <button class="s-btn" onclick="saveRpcKey()" style="padding:7px 10px;font-size:12px;margin-top:4px;">Save override</button>
+      <div id="rpc-save-msg" style="display:none;font-size:10px;color:rgba(134,239,172,.8);margin-top:5px;"></div>
+    </div>
+
+    <!-- Sidebar live mini result -->
+    <div class="sidebar-result">
+      <div class="sidebar-result-label">Live estimate</div>
+      <div class="sidebar-result-row">
+        <span class="sidebar-result-key">Days left</span>
+        <span class="sidebar-result-val" id="sb-days">—</span>
+      </div>
+      <div class="sidebar-result-row">
+        <span class="sidebar-result-key">Your share</span>
+        <span class="sidebar-result-val accent" id="sb-share">0.0000%</span>
+      </div>
+      <div class="sidebar-result-row">
+        <span class="sidebar-result-key">SLX earned</span>
+        <span class="sidebar-result-val" id="sb-slx">0 SLX</span>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Main panel (results) ── -->
+  <main class="main">
+
+    <!-- YT Projector -->
+    <div class="section-head">
+      <h2>YT flare projector</h2>
+      <a href="https://app.exponent.finance" target="_blank" rel="noopener"
+         style="font-size:10px;color:rgba(251,191,36,.75);font-weight:700;letter-spacing:.04em;white-space:nowrap;text-decoration:none;">Exponent ↗</a>
+    </div>
+    <div class="yt-projector" style="margin-bottom:24px;">
+      <div class="yt-intro">
+        Buying YT tokens on <a href="https://app.exponent.finance" target="_blank" rel="noopener">Exponent Finance</a>
+        earns flares on your full notional at a high multiplier — great for boosting your S2 share before season end.
+        Enter a deposit to project your earnings.
+      </div>
+
+      <!-- Inputs -->
+      <div class="yt-inputs">
+        <div class="yt-input-group">
+          <label class="yt-input-label" for="yt-deposit">Deposit (USD)</label>
+          <input type="text" id="yt-deposit" class="yt-input" placeholder="e.g. 1000"
+            inputmode="decimal" oninput="calcYtProjection()" onblur="ytDepositBlur()" onfocus="ytDepositFocus()">
+        </div>
+        <div class="yt-input-group">
+          <label class="yt-input-label" for="yt-market">YT market</label>
+          <select id="yt-market" class="yt-select" onchange="ytMarketChange()">
+            <option value="0">YT-USX Sep26 — 45× boost → 30×</option>
+            <option value="1">YT-eUSX Sep26 — 22.5× boost → 15×</option>
+          </select>
+        </div>
+        <div class="yt-input-group">
+          <label class="yt-input-label" for="yt-price">YT price ($)</label>
+          <input type="text" id="yt-price" class="yt-input" placeholder="auto"
+            inputmode="decimal" oninput="calcYtProjection()">
+        </div>
+      </div>
+
+      <!-- Outputs (hidden until deposit entered) -->
+      <div id="yt-outputs-wrap" style="display:none;">
+        <div class="yt-outputs-grid">
+          <div class="yt-out-item">
+            <div class="yt-out-label">YT received</div>
+            <div class="yt-out-val" id="yt-out-received">—</div>
+            <div class="yt-out-sub" id="yt-out-price-sub">—</div>
+          </div>
+          <div class="yt-out-item">
+            <div class="yt-out-label">Daily flares</div>
+            <div class="yt-out-val" id="yt-out-daily">—</div>
+            <div class="yt-out-sub" id="yt-out-phase">—</div>
+          </div>
+          <div class="yt-out-item is-total">
+            <div class="yt-out-label">Total to S2 end</div>
+            <div class="yt-out-val amber" id="yt-out-total">—</div>
+            <button class="yt-use-btn" id="yt-use-btn" onclick="ytUseInCalc()">Use in calc ↓</button>
+          </div>
+        </div>
+
+        <!-- FDV table -->
+        <div class="yt-fdv-wrap" id="yt-fdv-wrap">
+          <table class="yt-fdv-table">
+            <thead>
+              <tr>
+                <th>FDV scenario</th>
+                <th>SLX price</th>
+                <th>Your USD</th>
+                <th>vs YT cost</th>
+              </tr>
+            </thead>
+            <tbody id="yt-fdv-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-block">
+      <div class="hero-eyebrow">Projected SLX allocation</div>
+      <div>
+        <span class="hero-slx" id="calc-slx">0</span>
+        <span class="hero-slx-unit">SLX</span>
+      </div>
+      <div class="hero-sub" id="calc-you">Enter your flares on the left to see your estimate</div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="m-label">Days remaining</div>
+        <div class="m-val" id="calc-days">—</div>
+        <div class="m-sub" id="calc-end-label">until end date</div>
+      </div>
+      <div class="metric-card">
+        <div class="m-label">Network share</div>
+        <div class="m-val orange" id="calc-share">0.0000%</div>
+        <div class="m-sub">of total S2 flares</div>
+      </div>
+      <div class="metric-card">
+        <div class="m-label">At $100M FDV</div>
+        <div class="m-val" id="calc-usd-100m">$0</div>
+        <div class="m-sub">estimated USD value</div>
+      </div>
+    </div>
+
+    <!-- FDV scenarios -->
+    <div class="section-head"><h2>USD value by FDV scenario</h2></div>
+    <div class="fdv-grid" id="calc-fdv-cards">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Notes -->
+    <div class="section-head"><h2>Methodology</h2></div>
+    <div class="notes-box">
+      <strong>System projection:</strong> The "system total at end date" is auto-projected from Solstice's live published total plus the 7-day average daily emission rate. Changing the end date recalculates this in real time.
+      <br><br>
+      <strong>SLX allocation:</strong> Current docs anchor is 3% of total supply (30M SLX). Rumored bumps to 3.25%–3.5% if Dynamic Distribution activates based on TVL thresholds.
+      <br><br>
+      <strong>Loyalty multiplier:</strong> Applied once at S2 end based on retained TVL vs your S1 TWA baseline. If your 1.4× exceeds the network average (e.g. 1.2×), your effective share grows by ≈1.4÷1.2 = 17%. If everyone holds the same multiplier, it cancels out in the ratio.
+      <div class="notes-meta">
+        <span class="notes-tag">Data: Solstice official API</span>
+        <span class="notes-tag">Cached 24h per UTC day</span>
+        <span class="notes-tag">1B SLX total supply</span>
+        <span class="notes-tag">Season ends 2026-08-01</span>
+      </div>
+    </div>
+
+
+
+  </main>
+</div>
+
+<script>
+const SLX_TOTAL_SUPPLY = 1_000_000_000;
+const S2_AIRDROP_PCT   = 0.03;
+const FDV_SCENARIOS_M  = [30, 50, 100, 150, 200, 300, 400, 500];
+const YT_MATURITY_TS   = 1780318699;
+const YT_QUESTS        = new Set(['S2_EXPONENT_YIELD_USX_JUN26', 'S2_EXPONENT_YIELD_EUSX_JUN26']);
+
+let DAILY = null, DATA = null, WALLET_CONTEXT = null;
+
+// ── Number helpers ──
+function parseAmount(s) {
+  if (s == null) return NaN;
+  const c = String(s).replace(/[,\s_  ]/g,'').toLowerCase().trim();
+  if (!c || c==='-') return NaN;
+  const m = c.match(/^([+-]?\d*\.?\d+)\s*([kmbt])?$/);
+  if (!m) return NaN;
+  const n = parseFloat(m[1]);
+  if (!isFinite(n)) return NaN;
+  return n * ({k:1e3,m:1e6,b:1e9,t:1e12}[m[2]||'']||1);
+}
+function fmt(n) { return isFinite(n) && n!=null ? Math.round(n).toLocaleString('en-US') : ''; }
+
+let SYS_EDITED = false;
+
+function onAmountInput()  { onAnyInput(); }
+function onAmountBlur(el) { const n=parseAmount(el.value); el.value=isFinite(n)?fmt(n):''; onAnyInput(); }
+function onAmountFocus(el){ const n=parseAmount(el.value); if(isFinite(n)) el.value=String(Math.round(n)); }
+
+function onSysTotalInput(el) {
+  SYS_EDITED = true;
+  document.getElementById('calc-sys-hint').textContent = 'Manual — clear to restore projection';
+  document.getElementById('calc-sys-hint').className = 's-hint';
+  if (!el.value.trim()) { SYS_EDITED=false; refreshSysProjection(); }
+  onAnyInput();
+}
+function onEndDateChange() {
+  if (!SYS_EDITED) refreshSysProjection();
+  if (WALLET_CONTEXT) refreshUserProjection();
+  onAnyInput();
+}
+
+function refreshUserProjection() {
+  if (!WALLET_CONTEXT) return;
+  const endIso = document.getElementById('calc-end').value||'2026-08-01';
+  const today  = new Date(); today.setUTCHours(0,0,0,0);
+  const todayTs = Math.floor(today.getTime()/1000);
+  const daysToMat = Math.max(0,(YT_MATURITY_TS-todayTs)/86400);
+  const end  = new Date(endIso+'T00:00:00Z');
+  const days = Math.max(0,Math.round((end-today)/86400000));
+  const ytDays = Math.min(days,daysToMat);
+  const w = WALLET_CONTEXT;
+  const projected = w.current_flares + w.yt_daily*ytDays + w.nonyt_daily*days;
+  document.getElementById('calc-total').value = fmt(projected);
+  const ytNote = w.yt_daily>0 ? ` · YT capped at ${daysToMat.toFixed(1)}d` : '';
+  document.getElementById('calc-prefill-hint').textContent =
+    `Pre-filled: ${fmt(w.current_flares)} today + ${fmt(projected-w.current_flares)} projected${ytNote}`;
+}
+
+function onAnyInput() { renderResults(); }
+
+function computeSystemTotalAtEnd(daysAhead) {
+  if (DAILY && DAILY.solstice_series && DAILY.solstice_series.length>=2) {
+    const ss = DAILY.solstice_series;
+    const sysNow = ss[ss.length-1].cumulative||0;
+    const recent = ss.slice(-8);
+    const deltas = [];
+    for (let i=1;i<recent.length;i++) {
+      const d=recent[i].inflation;
+      if (d>0&&d<2.5e9) deltas.push(d);
+    }
+    const avgD = deltas.length ? deltas.reduce((a,b)=>a+b,0)/deltas.length : 1.18e9;
+    return { sysNow, avgD, total: sysNow+avgD*daysAhead, dCount: deltas.length };
+  }
+  return { sysNow: 0, avgD: 1.15e9, total: 0, dCount: 0 };
+}
+
+function refreshSysProjection() {
+  const endIso = document.getElementById('calc-end').value||'2026-08-01';
+  const today  = new Date(); today.setUTCHours(0,0,0,0);
+  const end    = new Date(endIso+'T00:00:00Z');
+  const days   = Math.max(0,Math.round((end-today)/86400000));
+  const { sysNow, avgD, total, dCount } = computeSystemTotalAtEnd(days);
+  document.getElementById('calc-sys-total').value = fmt(total)||'0';
+  const hint = document.getElementById('calc-sys-hint');
+  if (sysNow) {
+    hint.textContent = `${fmt(sysNow)} now + ${fmt(avgD)}/d × ${days}d (${dCount}d avg)`;
+    hint.className = 's-hint live';
+  } else {
+    hint.textContent = 'Loading from Solstice…';
+    hint.className = 's-hint';
+  }
+}
+
+function renderResults() {
+  const userTotal  = parseAmount(document.getElementById('calc-total').value)||0;
+  const sysTotal   = parseAmount(document.getElementById('calc-sys-total').value)||0;
+  const endIso     = document.getElementById('calc-end').value||'2026-08-01';
+  const today      = new Date(); today.setUTCHours(0,0,0,0);
+  const end        = new Date(endIso+'T00:00:00Z');
+  const days       = Math.max(0,Math.round((end-today)/86400000));
+  const yourMult   = parseFloat(document.getElementById('calc-your-mult').value)||1;
+  const avgMult    = parseFloat(document.getElementById('calc-avg-mult').value)||1;
+  const multRatio  = avgMult>0 ? yourMult/avgMult : 1;
+  const rawShare   = sysTotal>0 ? userTotal/sysTotal : 0;
+  const share      = rawShare*multRatio;
+  const airdropPct = parseFloat(document.getElementById('calc-airdrop-pct').value)||S2_AIRDROP_PCT;
+  const slx        = share*SLX_TOTAL_SUPPLY*airdropPct;
+  const boostNote  = yourMult!==avgMult ? ` × ${yourMult}/${avgMult}` : '';
+
+  // Hero
+  document.getElementById('calc-slx').textContent = fmt(slx)||'0';
+  document.getElementById('calc-you').textContent = userTotal > 0
+    ? `${fmt(userTotal)} flares${boostNote} · ${(share*100).toFixed(4)}% of network`
+    : 'Enter your flares on the left to see your estimate';
+
+  // Metrics
+  document.getElementById('calc-days').textContent  = days.toLocaleString('en-US');
+  document.getElementById('calc-share').textContent = (share*100).toFixed(4)+'%';
+  document.getElementById('sb-days').textContent    = days.toLocaleString('en-US');
+  document.getElementById('sb-share').textContent   = (share*100).toFixed(4)+'%';
+  document.getElementById('sb-slx').textContent     = fmt(slx)+' SLX';
+
+  // $100M metric card
+  const price100 = (100e6)/SLX_TOTAL_SUPPLY;
+  document.getElementById('calc-usd-100m').textContent = '$'+fmt(slx*price100);
+
+  // FDV cards
+  const basis = (WALLET_CONTEXT&&WALLET_CONTEXT.cost_basis&&WALLET_CONTEXT.cost_basis.total)||0;
+  document.getElementById('calc-fdv-cards').innerHTML = FDV_SCENARIOS_M.map(fdvM => {
+    const price = (fdvM*1e6)/SLX_TOTAL_SUPPLY;
+    const usd   = slx*price;
+    let roi = '';
+    if (basis>0) {
+      const x = usd/basis;
+      const cls = x>=1?'pos':'neg';
+      roi = `<div class="c-roi ${cls}">${x.toFixed(2)}× vs cost</div>`;
+    }
+    return `<div class="fdv-card">
+      <div class="c-fdv">$${fdvM}M FDV</div>
+      <div class="c-price">$${price.toFixed(3)}/SLX</div>
+      <div class="c-usd">$${fmt(usd)}</div>
+      ${roi}
+    </div>`;
+  }).join('');
+}
+
+// ── Quest data ──────────────────────────────────────────────────────────────
+// Hardcoded snapshot from app.solstice.finance/api/flares/quests (2026-05-30).
+// Only includes quests readable from standard wallet token accounts.
+const QUEST_FALLBACK = [
+  { code:'S2_EXPONENT_YIELD_USX_JUN26',  label:'YT USX Jun26',   mult:30, mint:'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s', type:'YT'   },
+  { code:'S2_EXPONENT_YIELD_EUSX_JUN26', label:'YT eUSX Jun26',  mult:15, mint:'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw', type:'YT'   },
+  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'YT USX Sep26',   mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT'   },
+  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'YT eUSX Sep26',  mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT'   },
+  { code:'S2_HOLD_USX_DAILY',            label:'Hold USX',       mult:10, mint:'6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG', type:'HOLD' },
+  { code:'S2_HOLD_EUSX_DAILY',           label:'Hold eUSX',      mult:2,  mint:'3ThdFZQKM6kRyVGLG48kaPg5TRMhYMKY1iCRa9xop1WC', type:'HOLD' },
+  { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault',  mult:10, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP'   },
+];
+const QUEST_CACHE_KEY = 'analytiq_quests_v1';
+
+async function fetchQuests() {
+  try {
+    const c = JSON.parse(localStorage.getItem(QUEST_CACHE_KEY)||'null');
+    if (c && c.date === utcDateStr()) return c.quests;
+  } catch {}
+  try {
+    const res = await fetch('https://app.solstice.finance/api/flares/quests');
+    if (res.ok) {
+      const { quests } = await res.json();
+      // Map to our schema; keep only wallet-readable types
+      const TYPE_MAP = { YIELD_TRADE:'YT', HOLD:'HOLD', LIQUIDITY_POSITION:'LP' };
+      const keep = ['YIELD_TRADE','HOLD'];
+      const mapped = quests
+        .filter(q => q.mint && q.isActive && keep.includes(q.type))
+        .map(q => ({ code:q.questCode, label:q.name, mult:q.multiplier, mint:q.mint, type:TYPE_MAP[q.type]||q.type }));
+      // Deduplicate: same mint → keep highest-mult entry (avoids applying 1MO/3MO hold bonuses)
+      const seen = {};
+      const deduped = [];
+      for (const q of mapped) {
+        if (!seen[q.mint] || q.mult > seen[q.mint].mult) { seen[q.mint]=q; }
+      }
+      for (const q of Object.values(seen)) deduped.push(q);
+      // Also add LP quests with distinct mints
+      for (const q of quests.filter(q2=>q2.mint&&q2.isActive&&q2.type==='LIQUIDITY_POSITION')) {
+        if (!seen[q.mint]) deduped.push({code:q.questCode,label:q.name,mult:q.multiplier,mint:q.mint,type:'LP'});
+      }
+      localStorage.setItem(QUEST_CACHE_KEY, JSON.stringify({date:utcDateStr(), quests:deduped}));
+      return deduped;
+    }
+  } catch {}
+  return QUEST_FALLBACK;
+}
+
+// ── Solana RPC wallet reader ─────────────────────────────────────────────────
+const SPL_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+const HELIUS_KEY = '0514f30d-4212-488a-a160-29009a5d5740';
+function getRpcEndpoint() {
+  const key = (localStorage.getItem('analytiq_rpc_key') || HELIUS_KEY).trim();
+  return `https://mainnet.helius-rpc.com/?api-key=${key}`;
+}
+
+function saveRpcKey() {
+  const key = (document.getElementById('rpc-key-input').value || '').trim();
+  const msgEl = document.getElementById('rpc-save-msg');
+  if (key) {
+    localStorage.setItem('analytiq_rpc_key', key);
+    msgEl.textContent = 'Custom key saved.';
+  } else {
+    localStorage.removeItem('analytiq_rpc_key');
+    msgEl.textContent = 'Cleared — using built-in key.';
+  }
+  msgEl.style.display = 'block';
+  setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+}
+
+function initRpcUI() {
+  // Always connected via built-in key; show LIVE badge permanently
+  document.getElementById('rpc-live-badge').style.display = 'inline';
+  const custom = (localStorage.getItem('analytiq_rpc_key') || '').trim();
+  if (custom) document.getElementById('rpc-key-input').value = custom;
+}
+
+async function readWalletOnChain(address) {
+  const rpc = getRpcEndpoint();
+  if (!rpc) throw new Error('no_rpc_key');
+  const quests = await fetchQuests();
+  const mintMap = {};
+  for (const q of quests) mintMap[q.mint] = q;
+
+  const res = await fetch(rpc, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      jsonrpc:'2.0', id:1,
+      method:'getTokenAccountsByOwner',
+      params: [address,
+        { programId: SPL_TOKEN_PROGRAM },
+        { encoding: 'jsonParsed' }
+      ]
+    })
+  });
+
+  const data = await res.json();
+  if (data.error) throw new Error('RPC: ' + data.error.message);
+
+  let dailyTotal = 0;
+  const breakdown = [];
+
+  for (const acc of data.result.value) {
+    const info  = acc.account.data.parsed.info;
+    const mint  = info.mint;
+    const bal   = info.tokenAmount.uiAmount || 0;
+    if (!mintMap[mint] || bal <= 0) continue;
+    const q     = mintMap[mint];
+    const daily = bal * q.mult;
+    dailyTotal += daily;
+    breakdown.push({ label:q.label, code:q.code, type:q.type, bal, mult:q.mult, daily });
+  }
+
+  breakdown.sort((a,b) => b.daily - a.daily);
+  return { dailyTotal, breakdown };
+}
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+function showBreakdown(dailyTotal, breakdown) {
+  const panel  = document.getElementById('position-breakdown');
+  const rows   = document.getElementById('breakdown-rows');
+  const dailyEl= document.getElementById('breakdown-daily');
+  const noteEl = document.getElementById('breakdown-note');
+
+  rows.innerHTML = breakdown.map(b => {
+    const badgeCls = b.type==='YT' ? 'yt' : b.type==='LP' ? 'lp' : 'hold';
+    return `<div class="bk-row">
+      <div class="bk-name">${b.label}
+        <div style="font-size:10px;opacity:.45;margin-top:1px">${fmt(b.bal)} tokens × ${b.mult}×</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">
+        <span class="bk-badge ${badgeCls}">${b.type}</span>
+        <span class="bk-daily">${fmt(b.daily)}/d</span>
+      </div>
+    </div>`;
+  }).join('') || '<div style="font-size:11px;color:rgba(255,255,255,.3);padding:6px 0">No matching positions found</div>';
+
+  dailyEl.textContent = fmt(dailyTotal) + ' flares/day';
+  noteEl.textContent  = 'LP/lend/borrow positions require protocol-level reads — not yet included.';
+  panel.style.display = 'block';
+}
+
+// ── Main wallet loader ───────────────────────────────────────────────────────
+async function calcLoadWallet() {
+  const raw    = document.getElementById('calc-wallet').value.trim();
+  const errEl  = document.getElementById('calc-error');
+  const srcEl  = document.getElementById('calc-source');
+  const btn    = document.getElementById('wallet-btn');
+  const bkPanel= document.getElementById('position-breakdown');
+  errEl.style.display='none'; srcEl.textContent=''; bkPanel.style.display='none';
+  if (!raw) { errEl.textContent='Paste a Solana wallet address.'; errEl.style.display='block'; return; }
+
+  btn.textContent='Loading…'; btn.disabled=true;
+
+  let onchainOk = false;
+
+  // ── Primary: on-chain via Helius RPC (only if key is configured) ──
+  if (getRpcEndpoint()) {
+    try {
+      srcEl.textContent = 'Reading on-chain positions…';
+      const { dailyTotal, breakdown } = await readWalletOnChain(raw);
+      onchainOk = true;
+
+      if (breakdown.length === 0) {
+        srcEl.textContent = 'No S2 positions found on-chain — enter flares manually.';
+      } else {
+        const endIso = document.getElementById('calc-end').value || '2026-08-01';
+        const today  = new Date(); today.setUTCHours(0,0,0,0);
+        const end    = new Date(endIso + 'T00:00:00Z');
+        const days   = Math.max(0, Math.round((end - today) / 86400000));
+
+        const ytDaily    = breakdown.filter(b=>b.type==='YT').reduce((s,b)=>s+b.daily,0);
+        const nonytDaily = breakdown.filter(b=>b.type!=='YT').reduce((s,b)=>s+b.daily,0);
+        const daysToMat  = Math.max(0, (YT_MATURITY_TS - Math.floor(today/1000)) / 86400);
+        const projected  = ytDaily * Math.min(days, daysToMat) + nonytDaily * days;
+
+        WALLET_CONTEXT = {
+          current_flares: 0,
+          yt_daily:        ytDaily,
+          nonyt_daily:     nonytDaily,
+        };
+
+        document.getElementById('calc-total').value = fmt(projected);
+        document.getElementById('calc-prefill-hint').textContent =
+          `${fmt(dailyTotal)}/day × ${days}d projected (no historical total — add manually if known)`;
+
+        showBreakdown(dailyTotal, breakdown);
+        srcEl.innerHTML = `${breakdown.length} position${breakdown.length!==1?'s':''} found on-chain · Helius RPC · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
+        renderResults();
+      }
+    } catch(e) {
+      srcEl.textContent = `On-chain read failed — trying index…`;
+    }
+  }
+
+  if (onchainOk) { btn.textContent='Load Wallet'; btn.disabled=false; return; }
+
+  // ── Fallback: Hanyon pre-indexed static file ──
+  srcEl.textContent = 'On-chain read failed — trying index…';
+  try {
+    const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(raw)}.json`);
+    if (res.status === 404) throw new Error('not_indexed');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+
+    let yt = 0, nonyt = 0;
+    for (const [q, v] of Object.entries(json.daily_emission_by_quest || {})) {
+      if (!v) continue;
+      if (YT_QUESTS.has(q)) yt += v; else nonyt += v;
+    }
+    WALLET_CONTEXT = {
+      current_flares: json.total_flares ?? 0,
+      yt_daily: yt, nonyt_daily: nonyt,
+    };
+    refreshUserProjection();
+    srcEl.innerHTML = `Loaded from index · ${fmt(WALLET_CONTEXT.current_flares)} flares today · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
+    renderResults();
+  } catch(e2) {
+    WALLET_CONTEXT = null;
+    const msg = e2.message === 'not_indexed'
+      ? 'Wallet not in analytics index yet — enter flares manually above.'
+      : 'Could not load wallet data. Enter flares manually above.';
+    errEl.innerHTML = msg;
+    errEl.style.display = 'block';
+    srcEl.textContent = '';
+  }
+
+  btn.textContent='Load Wallet'; btn.disabled=false;
+}
+
+// ── YT Projector ─────────────────────────────────────────────────────────────
+const YT_MAT_TS_SEP26  = 1790956800;  // ~Sep–Oct 2026
+const YT_BOOST_END_TS  = 1780358400;  // Jun 2, 2026 00:00 UTC
+
+const YT_MARKETS_LIST = [
+  { label:'YT-USX Sep26',   matTs:YT_MAT_TS_SEP26, boostMult:45,   baseMult:30, defApy:7.42 },
+  { label:'YT-eUSX Sep26',  matTs:YT_MAT_TS_SEP26, boostMult:22.5, baseMult:15, defApy:4.50 },
+];
+
+let _ytTotalFlares = 0;
+let _ytDeposit     = 0;
+
+function fmtYt(n) {
+  if (!isFinite(n) || n == null) return '—';
+  if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toLocaleString('en-US');
+}
+
+function ytMarketChange() {
+  // Clear manual YT price override and recompute
+  document.getElementById('yt-price').value = '';
+  const m = YT_MARKETS_LIST[parseInt(document.getElementById('yt-market').value)||0];
+  setYtPricePlaceholder(m);
+  calcYtProjection();
+}
+
+function setYtPricePlaceholder(m) {
+  const nowTs     = Math.floor(Date.now()/1000);
+  const daysToMat = Math.max(0, (m.matTs - nowTs) / 86400);
+  const price     = (m.defApy/100) * (daysToMat/365);
+  document.getElementById('yt-price').placeholder = '$'+price.toFixed(4);
+}
+
+function ytDepositBlur()  { const n=parseAmount(document.getElementById('yt-deposit').value); document.getElementById('yt-deposit').value = isFinite(n)&&n>0 ? n.toLocaleString('en-US',{maximumFractionDigits:2}) : ''; }
+function ytDepositFocus() { const n=parseAmount(document.getElementById('yt-deposit').value); if(isFinite(n)&&n>0) document.getElementById('yt-deposit').value=String(n); }
+
+function calcYtProjection() {
+  const deposit    = parseAmount(document.getElementById('yt-deposit').value)||0;
+  const marketIdx  = parseInt(document.getElementById('yt-market').value)||0;
+  const m          = YT_MARKETS_LIST[marketIdx];
+  const nowTs      = Math.floor(Date.now()/1000);
+  const daysToMat  = Math.max(0, (m.matTs - nowTs) / 86400);
+
+  // YT price: manual override or compute from APY
+  const priceRaw   = parseFloat(document.getElementById('yt-price').value);
+  const ytPrice    = (isFinite(priceRaw) && priceRaw > 0)
+    ? priceRaw
+    : (m.defApy/100) * (daysToMat/365);
+
+  setYtPricePlaceholder(m);
+
+  if (deposit <= 0) {
+    document.getElementById('yt-outputs-wrap').style.display = 'none';
+    _ytTotalFlares = 0; _ytDeposit = 0;
+    return;
+  }
+
+  const ytBal      = ytPrice > 0 ? deposit / ytPrice : 0;
+  const endIso     = document.getElementById('calc-end').value || '2026-08-01';
+  const endTs      = Math.floor(new Date(endIso+'T00:00:00Z').getTime()/1000);
+  const capTs      = Math.min(endTs, m.matTs);
+  const seasonSecs = Math.max(0, capTs - nowTs);
+  const seasonDays = seasonSecs / 86400;
+
+  const boostSecs  = Math.max(0, Math.min(YT_BOOST_END_TS - nowTs, seasonSecs));
+  const boostDays  = boostSecs / 86400;
+  const baseDays   = Math.max(0, seasonDays - boostDays);
+
+  const boostDaily  = ytBal * m.boostMult;
+  const baseDaily   = ytBal * m.baseMult;
+  const totalFlares = boostDaily * boostDays + baseDaily * baseDays;
+
+  _ytTotalFlares = totalFlares;
+  _ytDeposit     = deposit;
+
+  // Display outputs
+  document.getElementById('yt-outputs-wrap').style.display = 'block';
+  document.getElementById('yt-out-received').textContent  = fmtYt(ytBal) + ' YT';
+  document.getElementById('yt-out-price-sub').textContent = '$'+ytPrice.toFixed(4)+'/YT · '+daysToMat.toFixed(0)+'d to mat';
+
+  const displayDaily = boostDays > 0.5 ? boostDaily : baseDaily;
+  document.getElementById('yt-out-daily').textContent = fmtYt(displayDaily)+'/d';
+
+  let phaseText;
+  if (boostDays > 0.5) {
+    phaseText = `${fmtYt(boostDaily)}/d × ${boostDays.toFixed(1)}d → ${fmtYt(baseDaily)}/d × ${baseDays.toFixed(1)}d`;
+  } else {
+    phaseText = `${fmtYt(baseDaily)}/d × ${baseDays.toFixed(1)}d (${m.baseMult}×)`;
+  }
+  document.getElementById('yt-out-phase').textContent = phaseText;
+  document.getElementById('yt-out-total').textContent = fmtYt(totalFlares)+' flares';
+
+  renderYtFdvTable(deposit, totalFlares);
+}
+
+function renderYtFdvTable(deposit, totalFlares) {
+  const sysTotal   = parseAmount(document.getElementById('calc-sys-total').value)||1;
+  const yourMult   = parseFloat(document.getElementById('calc-your-mult').value)||1;
+  const avgMult    = parseFloat(document.getElementById('calc-avg-mult').value)||1;
+  const airdropPct = parseFloat(document.getElementById('calc-airdrop-pct').value)||S2_AIRDROP_PCT;
+  const share      = (totalFlares / sysTotal) * (yourMult / avgMult);
+  const slx        = share * SLX_TOTAL_SUPPLY * airdropPct;
+
+  if (slx <= 0 || deposit <= 0) {
+    document.getElementById('yt-fdv-body').innerHTML = '';
+    return;
+  }
+
+  // Breakeven FDV in $M: deposit = slx * (beFdvM*1e6 / 1e9) → beFdvM = deposit*1000/slx
+  const beFdvM    = (deposit * 1e9) / (slx * 1e6);
+  const bePrice   = deposit / slx;
+
+  let rows = '';
+
+  // Breakeven row
+  const beFdvLabel = beFdvM >= 1000 ? (beFdvM/1000).toFixed(1)+'B' : beFdvM.toFixed(0)+'M';
+  rows += `<tr class="yt-be-row">
+    <td>$${beFdvLabel} FDV <span class="yt-be-tag">break-even</span></td>
+    <td>$${bePrice.toFixed(4)}</td>
+    <td>$${deposit.toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+    <td>1.00×</td>
+  </tr>`;
+
+  // Scenario rows
+  const fdvScenarios = [30, 50, 100, 150, 200, 300, 400, 500];
+  for (const fdvM of fdvScenarios) {
+    const price = (fdvM * 1e6) / SLX_TOTAL_SUPPLY;
+    const usd   = slx * price;
+    const mult  = usd / deposit;
+    const cls   = mult >= 1 ? 'pos' : 'neg';
+    rows += `<tr>
+      <td>$${fdvM}M FDV</td>
+      <td>$${price.toFixed(3)}</td>
+      <td>$${fmt(usd)}</td>
+      <td class="${cls}">${mult.toFixed(2)}×</td>
+    </tr>`;
+  }
+
+  document.getElementById('yt-fdv-body').innerHTML = rows;
+}
+
+function ytUseInCalc() {
+  if (!isFinite(_ytTotalFlares) || _ytTotalFlares <= 0) return;
+  const btn      = document.getElementById('yt-use-btn');
+  const existing = parseAmount(document.getElementById('calc-total').value)||0;
+  document.getElementById('calc-total').value = fmt(existing + _ytTotalFlares);
+  onAnyInput();
+  btn.textContent = '✓ Added!';
+  setTimeout(() => { btn.textContent = 'Use in calc ↓'; }, 1800);
+  // Smooth scroll to hero (below projector)
+  try { document.querySelector('.hero-block').scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_) {}
+}
+
+// ── Cache helpers ──
+const CACHE_KEY = 'analytiq_daily_v1';
+function utcDateStr() { return new Date().toISOString().slice(0,10); }
+function readCache() {
+  try {
+    const e = JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    return e&&e.date===utcDateStr() ? e : null;
+  } catch { return null; }
+}
+function writeCache(daily,data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({date:utcDateStr(),daily,data})); } catch {}
+}
+
+const FALLBACK_SYS_NOW   = 44_616_220_954;
+const FALLBACK_DAILY_AVG = 1_153_865_942;
+
+function applyFallback() {
+  const today = new Date(); today.setUTCHours(0,0,0,0);
+  DAILY = { solstice_series: [
+    { date: new Date(today-86400000).toISOString().slice(0,10), cumulative: FALLBACK_SYS_NOW-FALLBACK_DAILY_AVG, inflation: FALLBACK_DAILY_AVG },
+    { date: today.toISOString().slice(0,10), cumulative: FALLBACK_SYS_NOW, inflation: FALLBACK_DAILY_AVG },
+  ]};
+}
+
+// ── Init: cache → Solstice API → Hanyon API → hardcoded ──
+(async () => {
+  const cached = readCache();
+  if (cached) {
+    DAILY = cached.daily;
+    DATA  = cached.data;
+  } else {
+    let solsticeNow = null;
+    try {
+      const r = await fetch('https://app.solstice.finance/api/flares/analytics');
+      if (r.ok) { const j=await r.json(); if(j?.totalFlares) solsticeNow=Math.round(j.totalFlares); }
+    } catch(_) {}
+
+    try {
+      const [dr,dar] = await Promise.allSettled([
+        fetch('https://s2.solstice.hanyon.app/api/daily'),
+        fetch('https://s2.solstice.hanyon.app/api/data'),
+      ]);
+      if (dr.status==='fulfilled'&&dr.value.ok)  DAILY = await dr.value.json();
+      if (dar.status==='fulfilled'&&dar.value.ok) DATA  = await dar.value.json();
+    } catch(_) {}
+
+    if (solsticeNow!==null) {
+      if (DAILY?.solstice_series?.length>=1) {
+        DAILY.solstice_series[DAILY.solstice_series.length-1].cumulative = solsticeNow;
+      } else {
+        const today = new Date(); today.setUTCHours(0,0,0,0);
+        DAILY = { solstice_series: [
+          { date: new Date(today-86400000).toISOString().slice(0,10), cumulative: solsticeNow-FALLBACK_DAILY_AVG, inflation: FALLBACK_DAILY_AVG },
+          { date: today.toISOString().slice(0,10), cumulative: solsticeNow, inflation: FALLBACK_DAILY_AVG },
+        ]};
+      }
+    }
+    if (DAILY?.solstice_series?.length>=2) writeCache(DAILY,DATA);
+  }
+
+  if (!DAILY?.solstice_series || DAILY.solstice_series.length<2) applyFallback();
+
+  refreshSysProjection();
+  renderResults();
+  initRpcUI();
+  // Set initial YT price placeholder
+  setYtPricePlaceholder(YT_MARKETS_LIST[0]);
+
+  // Auto-fill wallet from ?wallet= URL param (linked from wallet dashboard)
+  const walletParam = new URLSearchParams(location.search).get('wallet') || '';
+  if (walletParam && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletParam)) {
+    document.getElementById('calc-wallet').value = walletParam;
+    calcLoadWallet();
+  }
+})();
+</script>
+</body>
+</html>
