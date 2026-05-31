@@ -755,7 +755,7 @@ async function fetchQuests() {
     if (c && c.date === utcDateStr()) return c.quests;
   } catch {}
   try {
-    const res = await fetch('https://app.solstice.finance/api/flares/quests');
+    const res = await fetch('/api/quests');
     if (res.ok) {
       const { quests } = await res.json();
       // Map to our schema; keep only wallet-readable types
@@ -890,17 +890,39 @@ async function calcLoadWallet() {
 
   btn.textContent='Loading…'; btn.disabled=true;
 
-  let onchainOk = false;
+  // ── Primary: Hanyon analytics index ──────────────────────────────────────
+  srcEl.textContent = 'Loading from index…';
+  let hanyonOk = false;
+  try {
+    const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(raw)}.json`);
+    if (res.ok) {
+      const json = await res.json();
+      let yt = 0, nonyt = 0;
+      for (const [q, v] of Object.entries(json.daily_emission_by_quest || {})) {
+        if (!v) continue;
+        if (YT_QUESTS.has(q)) yt += v; else nonyt += v;
+      }
+      WALLET_CONTEXT = {
+        current_flares: json.total_flares ?? 0,
+        yt_daily: yt, nonyt_daily: nonyt,
+      };
+      refreshUserProjection();
+      srcEl.innerHTML = `Loaded from index · ${fmt(WALLET_CONTEXT.current_flares)} flares today · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
+      renderResults();
+      hanyonOk = true;
+    }
+  } catch(_) {}
 
-  // ── Primary: on-chain via Helius RPC (only if key is configured) ──
+  if (hanyonOk) { btn.textContent='Load Wallet'; btn.disabled=false; return; }
+
+  // ── Fallback: on-chain via Helius RPC (when wallet not yet in index) ──────
+  srcEl.textContent = 'Not in index yet — reading on-chain…';
   if (getRpcEndpoint()) {
     try {
-      srcEl.textContent = 'Reading on-chain positions…';
       const { dailyTotal, breakdown } = await readWalletOnChain(raw);
-      onchainOk = true;
 
       if (breakdown.length === 0) {
-        srcEl.textContent = 'No S2 positions found on-chain — enter flares manually.';
+        srcEl.textContent = 'No S2 positions found — enter flares manually.';
       } else {
         const endIso = document.getElementById('calc-end').value || '2026-08-01';
         const today  = new Date(); today.setUTCHours(0,0,0,0);
@@ -912,57 +934,23 @@ async function calcLoadWallet() {
         const daysToMat  = Math.max(0, (YT_MATURITY_TS - Math.floor(today/1000)) / 86400);
         const projected  = ytDaily * Math.min(days, daysToMat) + nonytDaily * days;
 
-        WALLET_CONTEXT = {
-          current_flares: 0,
-          yt_daily:        ytDaily,
-          nonyt_daily:     nonytDaily,
-        };
-
+        WALLET_CONTEXT = { current_flares: 0, yt_daily: ytDaily, nonyt_daily: nonytDaily };
         document.getElementById('calc-total').value = fmt(projected);
         document.getElementById('calc-prefill-hint').textContent =
           `${fmt(dailyTotal)}/day × ${days}d projected (no historical total — add manually if known)`;
-
         showBreakdown(dailyTotal, breakdown);
-        srcEl.innerHTML = `${breakdown.length} position${breakdown.length!==1?'s':''} found on-chain · Helius RPC · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
+        srcEl.innerHTML = `${breakdown.length} position${breakdown.length!==1?'s':''} found on-chain · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
         renderResults();
+        btn.textContent='Load Wallet'; btn.disabled=false;
+        return;
       }
-    } catch(e) {
-      srcEl.textContent = `On-chain read failed — trying index…`;
-    }
+    } catch(_) {}
   }
 
-  if (onchainOk) { btn.textContent='Load Wallet'; btn.disabled=false; return; }
-
-  // ── Fallback: Hanyon pre-indexed static file ──
-  srcEl.textContent = 'On-chain read failed — trying index…';
-  try {
-    const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(raw)}.json`);
-    if (res.status === 404) throw new Error('not_indexed');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
-
-    let yt = 0, nonyt = 0;
-    for (const [q, v] of Object.entries(json.daily_emission_by_quest || {})) {
-      if (!v) continue;
-      if (YT_QUESTS.has(q)) yt += v; else nonyt += v;
-    }
-    WALLET_CONTEXT = {
-      current_flares: json.total_flares ?? 0,
-      yt_daily: yt, nonyt_daily: nonyt,
-    };
-    refreshUserProjection();
-    srcEl.innerHTML = `Loaded from index · ${fmt(WALLET_CONTEXT.current_flares)} flares today · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
-    renderResults();
-  } catch(e2) {
-    WALLET_CONTEXT = null;
-    const msg = e2.message === 'not_indexed'
-      ? 'Wallet not in analytics index yet — enter flares manually above.'
-      : 'Could not load wallet data. Enter flares manually above.';
-    errEl.innerHTML = msg;
-    errEl.style.display = 'block';
-    srcEl.textContent = '';
-  }
-
+  WALLET_CONTEXT = null;
+  errEl.innerHTML = 'Wallet not in analytics index yet — enter flares manually above.';
+  errEl.style.display = 'block';
+  srcEl.textContent = '';
   btn.textContent='Load Wallet'; btn.disabled=false;
 }
 
@@ -1150,7 +1138,7 @@ function applyFallback() {
   // Always fetch live — never cached, so the "now" number is always fresh
   let solsticeNow = null;
   try {
-    const r = await fetch('https://app.solstice.finance/api/flares/analytics');
+    const r = await fetch('/api/analytics');
     if (r.ok) { const j=await r.json(); if(j?.totalFlares) solsticeNow=Math.round(j.totalFlares); }
   } catch(_) {}
 
@@ -1165,8 +1153,8 @@ function applyFallback() {
   } else {
     try {
       const [dr,dar] = await Promise.allSettled([
-        fetch('https://s2.solstice.hanyon.app/api/daily'),
-        fetch('https://s2.solstice.hanyon.app/api/data'),
+        fetch('/api/daily'),
+        fetch('/api/data'),
       ]);
       if (dr.status==='fulfilled'&&dr.value.ok)  DAILY = await dr.value.json();
       if (dar.status==='fulfilled'&&dar.value.ok) DATA  = await dar.value.json();

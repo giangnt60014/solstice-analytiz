@@ -525,7 +525,7 @@ async function loadQuests() {
     }
   } catch {}
   try {
-    const res = await fetch('https://app.solstice.finance/api/flares/quests');
+    const res = await fetch('/api/quests');
     if (res.ok) {
       const { quests } = await res.json();
       const TYPE_MAP = { YIELD_TRADE:'YT', HOLD:'HOLD', LIQUIDITY_POSITION:'LP' };
@@ -572,11 +572,11 @@ function getQuest(code) {
 // ── System data ────────────────────────────────────────────────────────────────
 async function loadSystem() {
   try {
-    const r = await fetch('https://app.solstice.finance/api/flares/analytics');
+    const r = await fetch('/api/analytics');
     if (r.ok) { const j = await r.json(); if (j?.totalFlares) sysNow = Math.round(j.totalFlares); }
   } catch {}
   try {
-    const r = await fetch('https://s2.solstice.hanyon.app/api/daily');
+    const r = await fetch('/api/daily');
     if (r.ok) {
       const d = await r.json();
       const ss = d?.solstice_series;
