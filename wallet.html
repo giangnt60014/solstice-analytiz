@@ -1158,100 +1158,96 @@ async function handleSearch() {
 
 async function loadDashboard(addr, forceRefresh = false) {
   setState('loading');
-  setLoadingMsg('Connecting…');
+  setLoadingMsg('Loading from index…');
 
-  const rpc = getRpc();
-
-  // ── Path A: on-chain walker (Helius RPC key present) ──────────────────────
-  if (rpc) {
-    if (forceRefresh) clearOcCache(addr);
-    try {
-      await loadQuests();
-      const questList = Object.values(questMap);
-      const result = await computeOnChainFlares(addr, rpc, questList);
-
-      if (!result.positions.length) {
-        setState('error', 'No S2 positions found',
-          'No active Solstice S2 positions were detected on-chain for this wallet. ' +
-          'Make sure you hold USX, eUSX, YT, or LP tokens that qualify for S2 flares.');
-        return;
-      }
-
-      walletState = {
-        addr,
-        currentFlares: result.totalFlares,
-        loyaltyMult:   1.4,
-        positions:     result.positions,
-        totalDaily:    result.totalDaily,
-        cachedTs:      result.cachedTs,
-        sourceLabel:   result.fromCache ? 'On-chain (cached)' : 'On-chain · Helius',
-        fromCache:     result.fromCache,
-      };
-
-      render();
-      setState('dashboard');
-      return;
-    } catch(e) {
-      setState('error', 'On-chain read failed',
-        `${e.message}. ` +
-        `<a href="#" onclick="loadDashboard('${addr}')">Retry</a>`);
-      return;
-    }
-  }
-
-  // ── Path B: Hanyon index fallback (no RPC key) ─────────────────────────────
-  setLoadingMsg('Loading from index…', 'Add a Helius RPC key for real-time on-chain data');
+  // ── Path A: Hanyon analytics index (primary) ──────────────────────────────
   let walletJson = null;
   try {
     const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(addr)}.json`);
-    if (res.status === 404) {
-      setState('error', 'Wallet not indexed yet',
-        'This wallet hasn\'t been picked up by the analytics indexer yet. ' +
-        'Add a <strong>Helius RPC key</strong> in the sidebar to read directly from chain — ' +
-        'no indexer required.');
-      return;
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    walletJson = await res.json();
+    if (res.ok) walletJson = await res.json();
+    else if (res.status !== 404) throw new Error(`HTTP ${res.status}`);
   } catch(e) {
-    setState('error', 'Failed to load wallet',
-      `Could not reach the analytics index: ${e.message}. ` +
-      'Add a Helius RPC key to bypass the index entirely.');
+    // Network error — fall through to on-chain
+  }
+
+  if (walletJson) {
+    await loadQuests();
+
+    // On-chain balance enrichment (best-effort, for display only)
+    let onChainBals = null;
+    try { onChainBals = await fetchOnChain(addr); } catch {}
+
+    const emByQ = walletJson.daily_emission_by_quest || {};
+    const positions = [];
+    let totalDaily = 0;
+
+    for (const [code, daily] of Object.entries(emByQ)) {
+      if (!daily || daily <= 0) continue;
+      const q = getQuest(code);
+      totalDaily += daily;
+      let balance = null, balSource = 'est';
+      if (onChainBals && q.mint && onChainBals[q.mint]) {
+        balance = onChainBals[q.mint]; balSource = 'on-chain';
+      } else if (q.mult > 0) {
+        balance = daily / q.mult;
+      }
+      positions.push({ code, label: q.label, type: q.type, mult: q.mult, matTs: q.matTs, daily, balance, balSource });
+    }
+
+    positions.sort((a, b) => b.daily - a.daily);
+
+    const currentFlares = walletJson.total_flares ?? 0;
+    const loyaltyMult   = walletJson.loyalty_multiplier ?? 1.4;
+    const multSel = document.getElementById('proj-your-mult');
+    const opts = [1.4, 1.3, 1.2, 1.0];
+    multSel.value = String(opts.reduce((a, b) => Math.abs(b - loyaltyMult) < Math.abs(a - loyaltyMult) ? b : a));
+
+    walletState = { addr, currentFlares, loyaltyMult, positions, totalDaily, cachedTs: Date.now()/1000, sourceLabel: 'Hanyon index', fromCache: false };
+    render();
+    setState('dashboard');
     return;
   }
 
-  // On-chain balance enrichment (best-effort)
-  let onChainBals = null;
-  try { onChainBals = await fetchOnChain(addr); } catch {}
-
-  const emByQ = walletJson.daily_emission_by_quest || {};
-  const positions = [];
-  let totalDaily = 0;
-
-  for (const [code, daily] of Object.entries(emByQ)) {
-    if (!daily || daily <= 0) continue;
-    const q = getQuest(code);
-    totalDaily += daily;
-    let balance = null, balSource = 'est';
-    if (onChainBals && q.mint && onChainBals[q.mint]) {
-      balance = onChainBals[q.mint]; balSource = 'on-chain';
-    } else if (q.mult > 0) {
-      balance = daily / q.mult;
-    }
-    positions.push({ code, label: q.label, type: q.type, mult: q.mult, matTs: q.matTs, daily, balance, balSource });
+  // ── Path B: on-chain walker (Hanyon 404 or unreachable) ───────────────────
+  setLoadingMsg('Wallet not in index yet — reading on-chain…', 'This may take a minute');
+  const rpc = getRpc();
+  if (!rpc) {
+    setState('error', 'Wallet not indexed yet',
+      'This wallet hasn\'t been picked up by the analytics indexer yet. ' +
+      'Check back later or add a Helius RPC key in the sidebar to read directly from chain.');
+    return;
   }
 
-  positions.sort((a, b) => b.daily - a.daily);
+  if (forceRefresh) clearOcCache(addr);
+  try {
+    await loadQuests();
+    const questList = Object.values(questMap);
+    const result = await computeOnChainFlares(addr, rpc, questList);
 
-  const currentFlares = walletJson.total_flares ?? 0;
-  const loyaltyMult   = walletJson.loyalty_multiplier ?? 1.4;
-  const multSel = document.getElementById('proj-your-mult');
-  const opts = [1.4, 1.3, 1.2, 1.0];
-  multSel.value = String(opts.reduce((a, b) => Math.abs(b - loyaltyMult) < Math.abs(a - loyaltyMult) ? b : a));
+    if (!result.positions.length) {
+      setState('error', 'No S2 positions found',
+        'No active Solstice S2 positions were detected on-chain for this wallet. ' +
+        'Make sure you hold USX, eUSX, YT, or LP tokens that qualify for S2 flares.');
+      return;
+    }
 
-  walletState = { addr, currentFlares, loyaltyMult, positions, totalDaily, cachedTs: Date.now()/1000, sourceLabel: 'Hanyon index', fromCache: false };
-  render();
-  setState('dashboard');
+    walletState = {
+      addr,
+      currentFlares: result.totalFlares,
+      loyaltyMult:   1.4,
+      positions:     result.positions,
+      totalDaily:    result.totalDaily,
+      cachedTs:      result.cachedTs,
+      sourceLabel:   result.fromCache ? 'On-chain (cached)' : 'On-chain · Helius',
+      fromCache:     result.fromCache,
+    };
+
+    render();
+    setState('dashboard');
+  } catch(e) {
+    setState('error', 'Failed to load wallet',
+      `${e.message}. <a href="#" onclick="loadDashboard('${addr}')">Retry</a>`);
+  }
 }
 
 // ── Rerender on multiplier change ─────────────────────────────────────────────
