@@ -1134,7 +1134,7 @@ function writeCache(daily,data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({date:utcDateStr(),daily,data})); } catch {}
 }
 
-const FALLBACK_SYS_NOW   = 44_616_220_954;
+const FALLBACK_SYS_NOW   = 45_826_314_643;
 const FALLBACK_DAILY_AVG = 1_153_865_942;
 
 function applyFallback() {
@@ -1145,19 +1145,24 @@ function applyFallback() {
   ]};
 }
 
-// ── Init: cache → Solstice API → Hanyon API → hardcoded ──
+// ── Init: always-live sysNow + cached Hanyon series ──
 (async () => {
+  // Always fetch live — never cached, so the "now" number is always fresh
+  let solsticeNow = null;
+  try {
+    const r = await fetch('https://app.solstice.finance/api/flares/analytics');
+    if (r.ok) { const j=await r.json(); if(j?.totalFlares) solsticeNow=Math.round(j.totalFlares); }
+  } catch(_) {}
+
   const cached = readCache();
   if (cached) {
     DAILY = cached.daily;
     DATA  = cached.data;
+    // Patch the tail entry with today's real live total so the "now" is never stale
+    if (solsticeNow && DAILY?.solstice_series?.length >= 1) {
+      DAILY.solstice_series[DAILY.solstice_series.length-1].cumulative = solsticeNow;
+    }
   } else {
-    let solsticeNow = null;
-    try {
-      const r = await fetch('https://app.solstice.finance/api/flares/analytics');
-      if (r.ok) { const j=await r.json(); if(j?.totalFlares) solsticeNow=Math.round(j.totalFlares); }
-    } catch(_) {}
-
     try {
       const [dr,dar] = await Promise.allSettled([
         fetch('https://s2.solstice.hanyon.app/api/daily'),
