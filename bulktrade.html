@@ -65,6 +65,12 @@ body { min-height: 100vh; }
 .error-msg { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius-sm); color: #fca5a5; font-size: 11px; padding: 8px 10px; display: none; }
 .source-msg { font-size: 10px; color: var(--text-3); }
 
+/* ── Calc switcher ── */
+.calc-switcher { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; gap: 4px; margin-bottom: 20px; width: fit-content; }
+.calc-tab { padding: 7px 18px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--text-3); text-decoration: none; transition: all .15s; white-space: nowrap; }
+.calc-tab:hover { color: var(--text-1); }
+.calc-tab.active { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); }
+
 /* ── Main ── */
 .main { flex: 1; padding: 28px 32px; max-width: 900px; }
 
@@ -112,7 +118,10 @@ tr:last-child td { border-bottom: none; }
 .badge-future { background: rgba(255,255,255,.05); color: var(--text-3); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
 
 /* FDV scenarios */
-.fdv-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+.fdv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.weeks-btn { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-2); font-size: 11px; font-weight: 700; padding: 5px 12px; cursor: pointer; transition: all .15s; }
+.weeks-btn:hover { border-color: var(--aura); color: var(--text-1); }
+.weeks-btn.active { background: var(--aura-lt); border-color: var(--aura); color: var(--aura); }
 .fdv-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .fdv-label { font-size: 11px; color: var(--text-3); margin-bottom: 4px; }
 .fdv-price { font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
@@ -171,6 +180,18 @@ tr:last-child td { border-bottom: none; }
         <div class="stat-value" id="user-deposit">—</div>
         <div class="stat-sub">USDC in vault</div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="stat-box">
+          <div class="stat-label">Deposit rank</div>
+          <div class="stat-value" style="font-size:15px" id="user-rank">—</div>
+          <div class="stat-sub">overall</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">AURA rank</div>
+          <div class="stat-value" style="font-size:15px" id="user-aura-rank">—</div>
+          <div class="stat-sub">by AURA</div>
+        </div>
+      </div>
       <div class="stat-box">
         <div class="stat-label">Your share</div>
         <div class="stat-value" id="user-share">—</div>
@@ -209,6 +230,12 @@ tr:last-child td { border-bottom: none; }
 
   <!-- Main -->
   <div class="main">
+    <!-- Calculator switcher -->
+    <div class="calc-switcher">
+      <a href="calculator.html" class="calc-tab">🌟 Solstice S2</a>
+      <a href="bulktrade.html"  class="calc-tab active">⚡ Bulktrade S1</a>
+    </div>
+
     <div class="page-title">
       Bulktrade S1 Airdrop Estimator
       <span class="tag">AURA</span>
@@ -273,6 +300,17 @@ tr:last-child td { border-bottom: none; }
       </div>
     </div>
 
+    <!-- Season length selector -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="font-size:12px;font-weight:700;color:var(--text-2)">Season 1 length:</span>
+      <div style="display:flex;gap:6px">
+        <button class="weeks-btn active" data-weeks="8"  onclick="setSeasonWeeks(8)">8 weeks</button>
+        <button class="weeks-btn"        data-weeks="12" onclick="setSeasonWeeks(12)">12 weeks</button>
+        <button class="weeks-btn"        data-weeks="16" onclick="setSeasonWeeks(16)">16 weeks</button>
+        <button class="weeks-btn"        data-weeks="20" onclick="setSeasonWeeks(20)">20 weeks</button>
+      </div>
+    </div>
+
     <!-- Distribution table -->
     <div class="section-head"><h2>Distribution schedule</h2></div>
     <div class="table-wrap" id="distribution-table">
@@ -327,12 +365,24 @@ const FIRST_SAT_TS      = 1780704000;           // Jun 6 2026 00:00 UTC (first S
 const WEEKLY_AURA       = 1_000_000;
 const VAULT_USDC_ACCT   = 'HwdwwKH1tMXo7ggTKcA5cdQrpcgqSoVib2eQh3BiyEQL';
 const HELIUS_KEY        = '0514f30d-4212-488a-a160-29009a5d5740';
-const FDV_LIST          = [1, 5, 10, 50, 100, 500];   // millions
-const AURA_TOTAL_SUPPLY = 1_000_000_000;               // 1B assumption (30% = 300M airdrop)
+const FDV_LIST          = [50, 100, 200, 300, 500, 1000];  // millions
+const AURA_TOTAL_SUPPLY = 1_000_000_000;                   // 1B assumption
 
-let vaultTotal  = 0;
-let userDeposit = 0;
-let userShare   = 0;
+let vaultTotal   = 0;
+let userDeposit  = 0;
+let userShare    = 0;
+let seasonWeeks  = 8;
+let lastApiData  = null;
+
+function setSeasonWeeks(n) {
+  seasonWeeks = n;
+  document.querySelectorAll('.weeks-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.weeks === n);
+  });
+  renderDistTable();
+  renderFdvGrid(lastApiData);
+  renderHero(lastApiData);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n, d=0) { return (isFinite(n)&&n!=null) ? n.toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:d}) : '—'; }
@@ -402,8 +452,7 @@ updateCountdown();
 // ── Render distribution table ─────────────────────────────────────────────────
 function renderDistTable() {
   const now = Math.floor(Date.now()/1000);
-  const LOOKAHEAD_WEEKS = 8;
-  const endTs = FIRST_SAT_TS + LOOKAHEAD_WEEKS * 7 * 86400;
+  const endTs = FIRST_SAT_TS + seasonWeeks * 7 * 86400;
   const sats  = getSaturdays(endTs);
   const pastSats  = sats.filter(s => s < now);
   const nextSat   = sats.find(s => s >= now);
@@ -463,9 +512,8 @@ function renderDistTable() {
 
 // ── Render FDV grid ───────────────────────────────────────────────────────────
 function renderFdvGrid(apiData) {
-  const now        = Math.floor(Date.now()/1000);
-  const LOOKAHEAD  = 8;
-  const sats       = getSaturdays(FIRST_SAT_TS + LOOKAHEAD * 7 * 86400);
+  const now  = Math.floor(Date.now()/1000);
+  const sats = getSaturdays(FIRST_SAT_TS + seasonWeeks * 7 * 86400);
   const remaining  = sats.filter(s => s >= now).length;
   const past       = sats.filter(s => s < now).length;
   const retroAura  = apiData?.aura ?? 0;
@@ -488,7 +536,7 @@ function renderFdvGrid(apiData) {
 function renderHero(apiData) {
   const now        = Math.floor(Date.now()/1000);
   const pastSats   = getSaturdays(now).length;                  // Saturdays already passed
-  const remainSats = getSaturdays(FIRST_SAT_TS + 8*7*86400).filter(s => s >= now).length;
+  const remainSats = getSaturdays(FIRST_SAT_TS + seasonWeeks*7*86400).filter(s => s >= now).length;
 
   const retroAura  = apiData?.aura ?? 0;                       // pre-season retro (from API)
   const s1Earned   = userShare * WEEKLY_AURA * pastSats;        // Season 1 past distributions
@@ -534,6 +582,7 @@ async function loadWallet() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
+    lastApiData = data;
     userDeposit = data.current_amount  ?? 0;
     userShare   = vaultTotal > 0 ? userDeposit / vaultTotal : 0;
 
@@ -546,6 +595,8 @@ async function loadWallet() {
       (userShare * 100).toFixed(4) + '%';
     document.getElementById('user-share-sub').textContent =
       `of $${fmtShort(vaultTotal)} vault`;
+    document.getElementById('user-rank').textContent      = data.rank     ? `#${data.rank}`      : '—';
+    document.getElementById('user-aura-rank').textContent = data.aura_rank ? `#${data.aura_rank}` : '—';
     // Retro AURA card
     const cats = data.categories || {};
     const retroTotal = data.aura ?? 0;

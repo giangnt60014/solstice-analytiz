@@ -162,6 +162,12 @@ select.s-select option { background: var(--navy-2); color: white; }
 .metric-card .m-val.orange { color: var(--orange); }
 .metric-card .m-sub { font-size: 11px; color: var(--text-4); margin-top: 3px; }
 
+/* ── Calc switcher ── */
+.calc-switcher { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; gap: 4px; margin-bottom: 20px; width: fit-content; }
+.calc-tab { padding: 7px 18px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--text-3); text-decoration: none; transition: all .15s; white-space: nowrap; }
+.calc-tab:hover { color: var(--text-1); }
+.calc-tab.active { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); }
+
 /* ── Section heading ── */
 .section-head {
   display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
@@ -461,6 +467,12 @@ select.s-select option { background: var(--navy-2); color: white; }
 
   <!-- ── Main panel (results) ── -->
   <main class="main">
+
+    <!-- Calculator switcher -->
+    <div class="calc-switcher">
+      <a href="calculator.html" class="calc-tab active">🌟 Solstice S2</a>
+      <a href="bulktrade.html"  class="calc-tab">⚡ Bulktrade S1</a>
+    </div>
 
     <!-- YT Projector -->
     <div class="section-head">
@@ -891,7 +903,7 @@ async function calcLoadWallet() {
   btn.textContent='Loading…'; btn.disabled=true;
 
   // ── Primary: Hanyon analytics index ──────────────────────────────────────
-  srcEl.textContent = 'Loading from index…';
+  srcEl.textContent = 'Loading…';
   let hanyonOk = false;
   try {
     const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(raw)}.json`);
@@ -907,7 +919,7 @@ async function calcLoadWallet() {
         yt_daily: yt, nonyt_daily: nonyt,
       };
       refreshUserProjection();
-      srcEl.innerHTML = `Loaded from index · ${fmt(WALLET_CONTEXT.current_flares)} flares today · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
+      srcEl.innerHTML = `Data loaded · ${fmt(WALLET_CONTEXT.current_flares)} flares today · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
       renderResults();
       hanyonOk = true;
     }
