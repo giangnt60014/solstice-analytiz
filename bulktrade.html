@@ -289,16 +289,20 @@ tr:last-child td { border-bottom: none; }
     <!-- Methodology -->
     <div class="section-head"><h2>Methodology</h2></div>
     <div class="meth-box">
-      <strong>Vault balance:</strong> Reads the USDC token account
-      <code style="font-size:10px;color:var(--cyan)">HwdwwKH…EQL</code> owned by the Bulktrade vault — this is the live total USDC locked.
+      <strong>User data:</strong> Fetched directly from the Bulktrade API
+      (<code style="font-size:10px;color:var(--cyan)">early.bulk.trade/api/aura/v1/aura/wallet/{address}</code>).
+      Returns <code>current_amount</code> (active USDC deposit), <code>aura</code> (retroactive AURA earned),
+      rank, and category breakdown — no transaction scanning needed.
       <br><br>
-      <strong>User deposit:</strong> Scans your wallet's transaction history since June 1, 2026. Any transaction that interacts with the Bulktrade vault is parsed to find the net USDC change in the vault's token account — positive = deposit, negative = withdrawal. Net result = your current effective deposit.
+      <strong>Vault total:</strong> Live USDC balance of the vault token account
+      <code style="font-size:10px;color:var(--cyan)">HwdwwKH…EQL</code> via Helius RPC — one call, instant.
       <br><br>
-      <strong>Share calculation:</strong> <em>your deposit ÷ total vault USDC</em> at the time of each Saturday distribution. This page uses the current vault balance as a proxy for past distribution snapshots.
+      <strong>Share calculation:</strong> <em>your current_amount ÷ total vault USDC</em>.
       <br><br>
-      <strong>Weekly AURA:</strong> 1,000,000 AURA every Saturday at 00:00 UTC. Your allocation = share × 1,000,000. Past distributions (before loading this page) are estimated using your current share as a constant approximation.
+      <strong>Weekly AURA:</strong> 1,000,000 AURA every Saturday at 00:00 UTC starting Jun 6, 2026.
+      Your allocation = share × 1,000,000. Retroactive AURA (pre-season) is taken directly from the API.
       <div class="meth-tags">
-        <span class="meth-tag">Source: Helius RPC</span>
+        <span class="meth-tag">Source: Bulktrade API</span>
         <span class="meth-tag">Vault: 7Wpp33…jjGt</span>
         <span class="meth-tag">1M AURA/week</span>
         <span class="meth-tag">Season 1 · Jun 2026</span>
@@ -311,10 +315,7 @@ tr:last-child td { border-bottom: none; }
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SEASON_START_TS   = 1780272000;           // Jun 1 2026 00:00 UTC (Monday)
 const FIRST_SAT_TS      = 1780704000;           // Jun 6 2026 00:00 UTC (first Saturday)
-const DEPOSIT_SCAN_FROM = 1767225600;           // Jan 1 2026 — scan back this far for deposits
 const WEEKLY_AURA       = 1_000_000;
-const PRESEASON_AURA    = 500_000;
-const VAULT_ADDR        = '7Wpp33Dn5KKUFjaij4zKYy1XZ9kdBtHjUatAT6NcjjGt';
 const VAULT_USDC_ACCT   = 'HwdwwKH1tMXo7ggTKcA5cdQrpcgqSoVib2eQh3BiyEQL';
 const HELIUS_KEY        = '0514f30d-4212-488a-a160-29009a5d5740';
 const FDV_LIST          = [1, 5, 10, 50, 100, 500];   // millions
@@ -334,19 +335,6 @@ function fmtShort(n) {
   return Math.round(n).toLocaleString();
 }
 function fmtUSD(n) { return '$' + fmt(n, n<10?2:0); }
-function getRpc() {
-  const k = (localStorage.getItem('analytiq_rpc_key') || HELIUS_KEY).trim();
-  return `https://mainnet.helius-rpc.com/?api-key=${k}`;
-}
-async function rpcPost(method, params) {
-  const res = await fetch(getRpc(), {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({jsonrpc:'2.0',id:1,method,params}),
-  });
-  const d = await res.json();
-  if (d.error) throw new Error(`RPC ${method}: ${d.error.message}`);
-  return d.result;
-}
 function setLoading(main, sub='') {
   document.getElementById('loading-text').textContent = main;
   document.getElementById('loading-sub').textContent = sub;
@@ -364,11 +352,16 @@ function formatDate(ts) {
   return new Date(ts*1000).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
 }
 
-// ── Load vault total ──────────────────────────────────────────────────────────
+// ── Load vault total (one RPC call, no scanning) ──────────────────────────────
 async function loadVaultTotal() {
   try {
-    const result = await rpcPost('getTokenAccountBalance', [VAULT_USDC_ACCT]);
-    vaultTotal = result.value.uiAmount || 0;
+    const rpc = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_KEY}`;
+    const res = await fetch(rpc, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',id:1,method:'getTokenAccountBalance',params:[VAULT_USDC_ACCT]}),
+    });
+    const d = await res.json();
+    vaultTotal = d.result?.value?.uiAmount || 0;
   } catch { vaultTotal = 0; }
   const el = document.getElementById('vault-total');
   const el2 = document.getElementById('vault-total-card');
@@ -460,13 +453,15 @@ function renderDistTable() {
 }
 
 // ── Render FDV grid ───────────────────────────────────────────────────────────
-function renderFdvGrid() {
-  const now = Math.floor(Date.now()/1000);
-  const LOOKAHEAD_WEEKS = 8;
-  const sats = getSaturdays(FIRST_SAT_TS + LOOKAHEAD_WEEKS * 7 * 86400);
-  const remainingSats = sats.filter(s => s >= now).length;
-  const pastSats = sats.filter(s => s < now).length;
-  const totalMyAura = userShare * WEEKLY_AURA * (pastSats + remainingSats);
+function renderFdvGrid(apiData) {
+  const now        = Math.floor(Date.now()/1000);
+  const LOOKAHEAD  = 8;
+  const sats       = getSaturdays(FIRST_SAT_TS + LOOKAHEAD * 7 * 86400);
+  const remaining  = sats.filter(s => s >= now).length;
+  const past       = sats.filter(s => s < now).length;
+  const retroAura  = apiData?.aura ?? 0;
+  const s1Aura     = userShare * WEEKLY_AURA * (past + remaining);
+  const totalMyAura= retroAura + s1Aura;
 
   const grid = document.getElementById('fdv-grid');
   grid.innerHTML = FDV_LIST.map(fdvM => {
@@ -475,34 +470,36 @@ function renderFdvGrid() {
     return `<div class="fdv-card">
       <div class="fdv-label">$${fdvM >= 1000 ? (fdvM/1000)+'B' : fdvM+'M'} FDV</div>
       <div class="fdv-price">$${price < 0.001 ? price.toExponential(2) : price < 1 ? price.toFixed(4) : price.toFixed(2)}/AURA</div>
-      <div class="fdv-value">${userShare > 0 ? fmtUSD(usd) : '—'}</div>
+      <div class="fdv-value">${(userShare > 0 || retroAura > 0) ? fmtUSD(usd) : '—'}</div>
     </div>`;
   }).join('');
 }
 
 // ── Update hero ───────────────────────────────────────────────────────────────
-function renderHero() {
-  const now = Math.floor(Date.now()/1000);
-  const sats = getSaturdays(now);
-  let nextSat = FIRST_SAT_TS;
+function renderHero(apiData) {
+  const now      = Math.floor(Date.now()/1000);
+  const sats     = getSaturdays(now);
+  const pastSats = sats.length;
+  let nextSat    = FIRST_SAT_TS;
   while (nextSat <= now) nextSat += 7*86400;
   const remainSats = getSaturdays(FIRST_SAT_TS + 8*7*86400).filter(s => s >= now).length;
-  const pastSats   = sats.length;
 
-  const pastAura   = userShare * WEEKLY_AURA * pastSats;
-  const nextAura   = userShare * WEEKLY_AURA;
-  const totalAura  = pastAura + nextAura + (userShare * WEEKLY_AURA * (remainSats - 1));
+  const retroAura  = apiData?.aura ?? 0;                        // retroactive from API
+  const pastAura   = userShare * WEEKLY_AURA * pastSats;        // past Saturday distributions
+  const nextAura   = userShare * WEEKLY_AURA;                   // this Saturday estimate
+  const futureAura = userShare * WEEKLY_AURA * Math.max(0, remainSats - 1);  // remaining Saturdays
+  const totalAura  = retroAura + pastAura + nextAura + futureAura;
 
-  document.getElementById('hero-total').textContent = userShare > 0 ? fmtShort(totalAura) : '—';
-  document.getElementById('hero-sub').textContent = userShare > 0
-    ? `Based on ${(userShare*100).toFixed(4)}% share · ${pastSats} past + ${remainSats} upcoming distributions`
+  document.getElementById('hero-total').textContent = (retroAura > 0 || userShare > 0) ? fmtShort(totalAura) : '—';
+  document.getElementById('hero-sub').textContent   = userShare > 0
+    ? `${fmt(retroAura)} retro + ${fmtShort(pastAura + nextAura + futureAura)} Season 1 est. · ${(userShare*100).toFixed(4)}% share`
     : 'Enter your wallet to see your estimate';
-  document.getElementById('hero-next').textContent  = userShare > 0 ? fmtShort(nextAura) + ' AURA' : '— AURA';
-  document.getElementById('hero-past').textContent  = userShare > 0 ? fmtShort(pastAura) + ' AURA' : '— AURA';
+  document.getElementById('hero-next').textContent  = userShare > 0 ? fmtShort(nextAura)  + ' AURA' : '— AURA';
+  document.getElementById('hero-past').textContent  = retroAura > 0  ? fmt(retroAura) + ' AURA (retro)' : '— AURA';
   document.getElementById('hero-weeks-left').textContent = remainSats;
 }
 
-// ── Load user deposits from on-chain ─────────────────────────────────────────
+// ── Load user data from Bulktrade API ────────────────────────────────────────
 async function loadWallet() {
   const raw  = document.getElementById('wallet-input').value.trim();
   const errEl= document.getElementById('error-msg');
@@ -521,80 +518,43 @@ async function loadWallet() {
 
   btn.disabled = true; btn.textContent = 'Loading…';
   document.getElementById('loading-overlay').classList.add('active');
+  setLoading('Loading from Bulktrade…', '');
 
   try {
-    setLoading('Scanning wallet transactions…', 'Fetching signatures since Jan 1 2026');
+    const res  = await fetch(`/api/bw/${raw}`);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
 
-    // Step 1: collect user sigs since Jan 1 2026 (captures pre-season deposits too)
-    const sigs = [];
-    let before;
-    while (true) {
-      const opts = {limit:100,commitment:'confirmed'};
-      if (before) opts.before = before;
-      const page = await rpcPost('getSignaturesForAddress', [raw, opts]);
-      if (!page?.length) break;
-      sigs.push(...page.filter(s => (s.blockTime||0) >= DEPOSIT_SCAN_FROM));
-      const last = page[page.length-1];
-      if ((last.blockTime||0) < DEPOSIT_SCAN_FROM || page.length < 100) break;
-      before = last.signature;
-    }
-
-    setLoading(`Scanning ${sigs.length} transactions…`, 'Looking for Bulktrade vault interactions');
-
-    // Step 2: batch-fetch and parse
-    let netDeposit = 0;
-    let vaultTxCount = 0;
-    const BATCH = 20;
-    for (let i = 0; i < sigs.length; i += BATCH) {
-      setLoading(
-        `Parsing transactions (${Math.min(i+BATCH, sigs.length)}/${sigs.length})…`,
-        'Filtering Bulktrade vault interactions'
-      );
-      const batch = sigs.slice(i, i+BATCH);
-      const txns = await Promise.all(batch.map(s =>
-        rpcPost('getTransaction', [s.signature, {encoding:'jsonParsed',maxSupportedTransactionVersion:0}])
-          .catch(() => null)
-      ));
-      for (const tx of txns) {
-        if (!tx) continue;
-        const keys = (tx.transaction?.message?.accountKeys || [])
-          .map(k => typeof k === 'string' ? k : k?.pubkey || '');
-        if (!keys.includes(VAULT_ADDR) && !keys.includes(VAULT_USDC_ACCT)) continue;
-        vaultTxCount++;
-
-        // Find vault USDC account index
-        const vIdx = keys.indexOf(VAULT_USDC_ACCT);
-        if (vIdx < 0) continue;
-
-        const pre  = (tx.meta?.preTokenBalances  || []).find(b => b.accountIndex === vIdx);
-        const post = (tx.meta?.postTokenBalances || []).find(b => b.accountIndex === vIdx);
-        const preAmt  = pre?.uiTokenAmount?.uiAmount  || 0;
-        const postAmt = post?.uiTokenAmount?.uiAmount || 0;
-        netDeposit += (postAmt - preAmt);
-      }
-    }
-
-    userDeposit = Math.max(0, netDeposit);
+    userDeposit = data.current_amount  ?? 0;
     userShare   = vaultTotal > 0 ? userDeposit / vaultTotal : 0;
 
-    // Update sidebar
+    // Sidebar
     document.getElementById('user-stats').style.display = 'flex';
-    document.getElementById('user-deposit').textContent = '$' + fmt(userDeposit, 2);
-    document.getElementById('user-share').textContent   = (userShare*100).toFixed(4) + '%';
+    document.getElementById('user-deposit').textContent =
+      '$' + fmt(userDeposit, 2) + (data.deposited_amount !== data.current_amount
+        ? ` (deposited $${fmt(data.deposited_amount,2)})` : '');
+    document.getElementById('user-share').textContent =
+      (userShare * 100).toFixed(4) + '%';
     document.getElementById('user-share-sub').textContent =
       `of $${fmtShort(vaultTotal)} vault`;
     document.getElementById('user-next-aura').textContent =
       fmtShort(userShare * WEEKLY_AURA);
 
-    srcEl.textContent = `${vaultTxCount} vault tx${vaultTxCount!==1?'s':''} found · ${sigs.length} total scanned`;
+    // Source line: rank + aura earned
+    const cats = data.categories || {};
+    const catStr = Object.entries(cats).map(([k,v]) => `${k.replace('retro_','')}: ${v}`).join(' · ');
+    srcEl.innerHTML =
+      `Rank #${data.rank} · AURA rank #${data.aura_rank} · ` +
+      `${fmt(data.aura)} AURA earned (retro: ${catStr}) · ` +
+      `held ${Math.round(data.total_held_time_hours || 0).toLocaleString()}h`;
 
-    // Re-render everything
-    renderHero();
+    renderHero(data);
     renderDistTable();
-    renderFdvGrid();
+    renderFdvGrid(data);
 
   } catch(e) {
-    errEl.textContent = 'Failed to load wallet: ' + e.message;
+    errEl.textContent = 'Failed: ' + e.message;
     errEl.style.display = 'block';
   } finally {
     document.getElementById('loading-overlay').classList.remove('active');
