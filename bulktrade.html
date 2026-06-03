@@ -309,8 +309,9 @@ tr:last-child td { border-bottom: none; }
 
 <script>
 // ── Constants ─────────────────────────────────────────────────────────────────
-const SEASON_START_TS   = 1748736000;          // Jun 1 2026 00:00 UTC (Monday)
-const FIRST_SAT_TS      = 1748736000 + 5*86400; // Jun 6 2026 (first Saturday)
+const SEASON_START_TS   = 1780272000;           // Jun 1 2026 00:00 UTC (Monday)
+const FIRST_SAT_TS      = 1780704000;           // Jun 6 2026 00:00 UTC (first Saturday)
+const DEPOSIT_SCAN_FROM = 1767225600;           // Jan 1 2026 — scan back this far for deposits
 const WEEKLY_AURA       = 1_000_000;
 const PRESEASON_AURA    = 500_000;
 const VAULT_ADDR        = '7Wpp33Dn5KKUFjaij4zKYy1XZ9kdBtHjUatAT6NcjjGt';
@@ -522,9 +523,9 @@ async function loadWallet() {
   document.getElementById('loading-overlay').classList.add('active');
 
   try {
-    setLoading('Scanning wallet transactions…', 'Fetching signatures since Jun 1 2026');
+    setLoading('Scanning wallet transactions…', 'Fetching signatures since Jan 1 2026');
 
-    // Step 1: collect all user sigs since season start
+    // Step 1: collect user sigs since Jan 1 2026 (captures pre-season deposits too)
     const sigs = [];
     let before;
     while (true) {
@@ -532,9 +533,9 @@ async function loadWallet() {
       if (before) opts.before = before;
       const page = await rpcPost('getSignaturesForAddress', [raw, opts]);
       if (!page?.length) break;
-      sigs.push(...page.filter(s => (s.blockTime||0) >= SEASON_START_TS));
+      sigs.push(...page.filter(s => (s.blockTime||0) >= DEPOSIT_SCAN_FROM));
       const last = page[page.length-1];
-      if ((last.blockTime||0) < SEASON_START_TS || page.length < 100) break;
+      if ((last.blockTime||0) < DEPOSIT_SCAN_FROM || page.length < 100) break;
       before = last.signature;
     }
 
