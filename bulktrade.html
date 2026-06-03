@@ -177,9 +177,14 @@ tr:last-child td { border-bottom: none; }
         <div class="stat-sub" id="user-share-sub">of total vault</div>
       </div>
       <div class="stat-box">
+        <div class="stat-label">Retro AURA earned</div>
+        <div class="stat-value" id="user-retro-aura" style="color:var(--amber)">—</div>
+        <div class="stat-sub" id="user-retro-sub">pre-season</div>
+      </div>
+      <div class="stat-box">
         <div class="stat-label">Est. this Saturday</div>
         <div class="stat-value" id="user-next-aura" style="color:var(--aura)">—</div>
-        <div class="stat-sub">AURA</div>
+        <div class="stat-sub">AURA · Season 1</div>
       </div>
     </div>
 
@@ -225,12 +230,16 @@ tr:last-child td { border-bottom: none; }
       </div>
       <div class="hero-right">
         <div class="hero-stat">
-          <div class="hero-stat-label">This Saturday</div>
-          <div class="hero-stat-value" id="hero-next">— AURA</div>
+          <div class="hero-stat-label">Retro AURA</div>
+          <div class="hero-stat-value" id="hero-retro" style="color:var(--amber)">— AURA</div>
         </div>
         <div class="hero-stat">
-          <div class="hero-stat-label">Past weeks earned</div>
-          <div class="hero-stat-value" id="hero-past">— AURA</div>
+          <div class="hero-stat-label">Season 1 earned</div>
+          <div class="hero-stat-value" id="hero-past">0 AURA</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">This Saturday</div>
+          <div class="hero-stat-value" id="hero-next">— AURA</div>
         </div>
         <div class="hero-stat">
           <div class="hero-stat-label">Weeks remaining</div>
@@ -477,25 +486,24 @@ function renderFdvGrid(apiData) {
 
 // ── Update hero ───────────────────────────────────────────────────────────────
 function renderHero(apiData) {
-  const now      = Math.floor(Date.now()/1000);
-  const sats     = getSaturdays(now);
-  const pastSats = sats.length;
-  let nextSat    = FIRST_SAT_TS;
-  while (nextSat <= now) nextSat += 7*86400;
+  const now        = Math.floor(Date.now()/1000);
+  const pastSats   = getSaturdays(now).length;                  // Saturdays already passed
   const remainSats = getSaturdays(FIRST_SAT_TS + 8*7*86400).filter(s => s >= now).length;
 
-  const retroAura  = apiData?.aura ?? 0;                        // retroactive from API
-  const pastAura   = userShare * WEEKLY_AURA * pastSats;        // past Saturday distributions
+  const retroAura  = apiData?.aura ?? 0;                       // pre-season retro (from API)
+  const s1Earned   = userShare * WEEKLY_AURA * pastSats;        // Season 1 past distributions
   const nextAura   = userShare * WEEKLY_AURA;                   // this Saturday estimate
-  const futureAura = userShare * WEEKLY_AURA * Math.max(0, remainSats - 1);  // remaining Saturdays
-  const totalAura  = retroAura + pastAura + nextAura + futureAura;
+  const futureAura = userShare * WEEKLY_AURA * Math.max(0, remainSats - 1);
+  const totalAura  = retroAura + s1Earned + nextAura + futureAura;
 
-  document.getElementById('hero-total').textContent = (retroAura > 0 || userShare > 0) ? fmtShort(totalAura) : '—';
-  document.getElementById('hero-sub').textContent   = userShare > 0
-    ? `${fmt(retroAura)} retro + ${fmtShort(pastAura + nextAura + futureAura)} Season 1 est. · ${(userShare*100).toFixed(4)}% share`
+  const hasData = retroAura > 0 || userShare > 0;
+  document.getElementById('hero-total').textContent     = hasData ? fmtShort(totalAura) : '—';
+  document.getElementById('hero-sub').textContent       = userShare > 0
+    ? `${fmt(retroAura)} retro + ${fmtShort(s1Earned + nextAura + futureAura)} Season 1 est. · ${(userShare*100).toFixed(4)}% share`
     : 'Enter your wallet to see your estimate';
-  document.getElementById('hero-next').textContent  = userShare > 0 ? fmtShort(nextAura)  + ' AURA' : '— AURA';
-  document.getElementById('hero-past').textContent  = retroAura > 0  ? fmt(retroAura) + ' AURA (retro)' : '— AURA';
+  document.getElementById('hero-retro').textContent    = retroAura > 0 ? fmt(retroAura) + ' AURA' : '— AURA';
+  document.getElementById('hero-past').textContent     = userShare > 0 ? fmtShort(s1Earned) + ' AURA' : '0 AURA';
+  document.getElementById('hero-next').textContent     = userShare > 0 ? fmtShort(nextAura) + ' AURA' : '— AURA';
   document.getElementById('hero-weeks-left').textContent = remainSats;
 }
 
@@ -538,15 +546,21 @@ async function loadWallet() {
       (userShare * 100).toFixed(4) + '%';
     document.getElementById('user-share-sub').textContent =
       `of $${fmtShort(vaultTotal)} vault`;
-    document.getElementById('user-next-aura').textContent =
+    // Retro AURA card
+    const cats = data.categories || {};
+    const retroTotal = data.aura ?? 0;
+    const catDesc = Object.entries(cats)
+      .filter(([,v]) => v > 0)
+      .map(([k,v]) => `${k.replace('retro_','')} +${v}`)
+      .join(', ');
+    document.getElementById('user-retro-aura').textContent = fmt(retroTotal);
+    document.getElementById('user-retro-sub').textContent  = catDesc || 'pre-season';
+    document.getElementById('user-next-aura').textContent  =
       fmtShort(userShare * WEEKLY_AURA);
 
-    // Source line: rank + aura earned
-    const cats = data.categories || {};
-    const catStr = Object.entries(cats).map(([k,v]) => `${k.replace('retro_','')}: ${v}`).join(' · ');
+    // Source line: rank
     srcEl.innerHTML =
       `Rank #${data.rank} · AURA rank #${data.aura_rank} · ` +
-      `${fmt(data.aura)} AURA earned (retro: ${catStr}) · ` +
       `held ${Math.round(data.total_held_time_hours || 0).toLocaleString()}h`;
 
     renderHero(data);
