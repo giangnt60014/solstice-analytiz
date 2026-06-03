@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bulktrade S1 Airdrop Estimator</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:      #060a16;
+  --navy-2:    #0a1020;
+  --navy-3:    #10192e;
+  --bg:        #0a1020;
+  --surface:   #0f1928;
+  --surface-2: #141f32;
+  --border:    rgba(255,255,255,.09);
+  --text-1:    #e8eeff;
+  --text-2:    #7e92be;
+  --text-3:    #485e82;
+  --orange:    #7c6af7;
+  --orange-lt: rgba(124,106,247,.14);
+  --orange-dk: #6355d8;
+  --green:     #22c55e;
+  --green-lt:  rgba(34,197,94,.12);
+  --red:       #ef4444;
+  --amber:     #fbbf24;
+  --cyan:      #22d3ee;
+  --aura:      #e879f9;
+  --aura-lt:   rgba(232,121,249,.13);
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 16px;
+  --sidebar-w: 300px;
+}
+html { background: var(--bg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; color: var(--text-1); }
+body { min-height: 100vh; }
+
+.header { background: var(--navy); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 200; border-bottom: 1px solid rgba(255,255,255,.07); }
+.header-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 800; font-size: 15px; letter-spacing: -.02em; text-decoration: none; }
+.header-badge { background: var(--aura); color: white; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+.header-nav { display: flex; align-items: center; gap: 18px; }
+.header-nav a { color: rgba(255,255,255,.45); font-size: 12px; font-weight: 600; text-decoration: none; transition: color .15s; }
+.header-nav a:hover, .header-nav a.active { color: white; }
+.open-app { background: var(--orange); color: white !important; padding: 6px 14px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; }
+
+.page { display: flex; min-height: calc(100vh - 52px); }
+
+/* ── Sidebar ── */
+.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--navy-2); border-right: 1px solid var(--border); padding: 24px 18px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 52px; height: calc(100vh - 52px); overflow-y: auto; }
+.sidebar-section { display: flex; flex-direction: column; gap: 10px; }
+.sidebar-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+.wallet-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-1); font-size: 12px; padding: 9px 11px; outline: none; font-family: ui-monospace, monospace; }
+.wallet-input::placeholder { color: var(--text-3); }
+.wallet-input:focus { border-color: var(--aura); }
+.load-btn { width: 100%; padding: 10px; background: var(--aura); color: white; border: none; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.load-btn:hover { background: #c026d3; }
+.load-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.stat-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+.stat-value { font-size: 18px; font-weight: 800; color: var(--text-1); }
+.stat-sub { font-size: 11px; color: var(--text-2); margin-top: 3px; }
+
+.error-msg { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius-sm); color: #fca5a5; font-size: 11px; padding: 8px 10px; display: none; }
+.source-msg { font-size: 10px; color: var(--text-3); }
+
+/* ── Main ── */
+.main { flex: 1; padding: 28px 32px; max-width: 900px; }
+
+.page-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+.page-title .tag { font-size: 11px; font-weight: 700; background: var(--aura-lt); color: var(--aura); border-radius: 4px; padding: 2px 8px; }
+.page-subtitle { font-size: 13px; color: var(--text-2); margin-bottom: 24px; }
+
+/* Hero */
+.hero { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 20px; display: flex; align-items: center; gap: 40px; }
+.hero-left { flex: 1; }
+.hero-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--aura); margin-bottom: 8px; }
+.hero-value { font-size: 48px; font-weight: 900; letter-spacing: -.03em; color: var(--text-1); }
+.hero-unit { font-size: 18px; font-weight: 700; color: var(--text-2); margin-left: 6px; }
+.hero-sub { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+.hero-right { display: flex; flex-direction: column; gap: 14px; min-width: 200px; }
+.hero-stat { }
+.hero-stat-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 3px; }
+.hero-stat-value { font-size: 18px; font-weight: 800; color: var(--text-1); }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.stat-card-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.stat-card-value { font-size: 20px; font-weight: 800; color: var(--text-1); }
+.stat-card-sub { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+
+/* Countdown */
+.countdown { background: linear-gradient(135deg, rgba(232,121,249,.12), rgba(124,106,247,.08)); border: 1px solid rgba(232,121,249,.2); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+.countdown-text { font-size: 13px; color: var(--text-2); }
+.countdown-text strong { color: var(--aura); }
+.countdown-timer { font-size: 20px; font-weight: 800; color: var(--text-1); font-variant-numeric: tabular-nums; }
+
+/* Table */
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-head h2 { font-size: 14px; font-weight: 700; color: var(--text-1); }
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; }
+th { background: var(--surface-2); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 12px; color: var(--text-2); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.td-num { font-weight: 700; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.td-future { opacity: .45; }
+.badge-done { background: var(--green-lt); color: var(--green); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.badge-next { background: var(--aura-lt); color: var(--aura); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.badge-future { background: rgba(255,255,255,.05); color: var(--text-3); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+
+/* FDV scenarios */
+.fdv-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+.fdv-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.fdv-label { font-size: 11px; color: var(--text-3); margin-bottom: 4px; }
+.fdv-price { font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+.fdv-value { font-size: 17px; font-weight: 800; color: var(--text-1); }
+
+/* Methodology */
+.meth-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; font-size: 12px; color: var(--text-2); line-height: 1.7; }
+.meth-box strong { color: var(--text-1); }
+.meth-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.meth-tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; font-size: 10px; font-weight: 600; color: var(--text-3); padding: 3px 8px; }
+
+/* Loading */
+.loading-overlay { display: none; position: fixed; inset: 0; z-index: 500; background: rgba(6,10,22,.85); backdrop-filter: blur(4px); align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+.loading-overlay.active { display: flex; }
+.loading-spinner { width: 36px; height: 36px; border: 3px solid rgba(232,121,249,.25); border-top-color: var(--aura); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.loading-sub { font-size: 11px; color: var(--text-3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="header-brand" href="/">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#e879f9" opacity=".18"/><path d="M12 4L14.5 9.5H20L15.5 13L17.5 19L12 15.5L6.5 19L8.5 13L4 9.5H9.5L12 4Z" fill="#e879f9"/></svg>
+    Bulktrade <span class="header-badge">S1</span>
+  </a>
+  <nav class="header-nav">
+    <a href="calculator.html">Calculator</a>
+    <a href="wallet.html">Wallet</a>
+    <a href="bulktrade.html" class="active">Bulktrade S1</a>
+    <a href="https://bulktrade.io" target="_blank" rel="noopener" class="open-app">Open App ↗</a>
+  </nav>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Loading…</div>
+  <div class="loading-sub" id="loading-sub"></div>
+</div>
+
+<div class="page">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Your wallet</div>
+      <input class="wallet-input" id="wallet-input" type="text" placeholder="Solana wallet address" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')loadWallet()">
+      <button class="load-btn" id="load-btn" onclick="loadWallet()">Load Wallet</button>
+      <div class="error-msg" id="error-msg"></div>
+      <div class="source-msg" id="source-msg"></div>
+    </div>
+
+    <div class="sidebar-section" id="user-stats" style="display:none">
+      <div class="stat-box">
+        <div class="stat-label">Your deposit</div>
+        <div class="stat-value" id="user-deposit">—</div>
+        <div class="stat-sub">USDC in vault</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Your share</div>
+        <div class="stat-value" id="user-share">—</div>
+        <div class="stat-sub" id="user-share-sub">of total vault</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Est. this Saturday</div>
+        <div class="stat-value" id="user-next-aura" style="color:var(--aura)">—</div>
+        <div class="stat-sub">AURA</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="stat-box">
+        <div class="stat-label">Total vault</div>
+        <div class="stat-value" id="vault-total">Loading…</div>
+        <div class="stat-sub">USDC deposited</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Weekly emission</div>
+        <div class="stat-value">1,000,000</div>
+        <div class="stat-sub">AURA every Saturday</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Pre-season total</div>
+        <div class="stat-value">500,000</div>
+        <div class="stat-sub">AURA distributed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="page-title">
+      Bulktrade S1 Airdrop Estimator
+      <span class="tag">AURA</span>
+    </div>
+    <div class="page-subtitle">
+      Deposit USDC on Bulktrade → earn AURA every Saturday, proportional to your vault share.
+      Up to 30% of total AURA supply allocated for Season 1 airdrop.
+    </div>
+
+    <!-- Hero -->
+    <div class="hero" id="hero">
+      <div class="hero-left">
+        <div class="hero-label">Your estimated total AURA</div>
+        <div>
+          <span class="hero-value" id="hero-total">—</span>
+          <span class="hero-unit">AURA</span>
+        </div>
+        <div class="hero-sub" id="hero-sub">Enter your wallet to see your estimate</div>
+      </div>
+      <div class="hero-right">
+        <div class="hero-stat">
+          <div class="hero-stat-label">This Saturday</div>
+          <div class="hero-stat-value" id="hero-next">— AURA</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Past weeks earned</div>
+          <div class="hero-stat-value" id="hero-past">— AURA</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Weeks remaining</div>
+          <div class="hero-stat-value" id="hero-weeks-left">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown -->
+    <div class="countdown" id="countdown">
+      <div class="countdown-text">Next distribution: <strong id="next-sat-date">Saturday, Jun 6 2026</strong></div>
+      <div class="countdown-timer" id="countdown-timer">—d —h —m</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-label">Season start</div>
+        <div class="stat-card-value">Jun 1, 2026</div>
+        <div class="stat-card-sub">Monday · Season 1 live</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Saturdays completed</div>
+        <div class="stat-card-value" id="sats-done">0</div>
+        <div class="stat-card-sub" id="sats-done-sub">AURA already distributed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Total depositors</div>
+        <div class="stat-card-value" id="vault-total-card">—</div>
+        <div class="stat-card-sub">USDC in vault</div>
+      </div>
+    </div>
+
+    <!-- Distribution table -->
+    <div class="section-head"><h2>Distribution schedule</h2></div>
+    <div class="table-wrap" id="distribution-table">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Total distributed</th>
+            <th>Your share</th>
+            <th>Your AURA</th>
+          </tr>
+        </thead>
+        <tbody id="dist-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- FDV scenarios -->
+    <div class="section-head"><h2>AURA value scenarios</h2></div>
+    <div class="fdv-grid" id="fdv-grid"></div>
+
+    <!-- Methodology -->
+    <div class="section-head"><h2>Methodology</h2></div>
+    <div class="meth-box">
+      <strong>Vault balance:</strong> Reads the USDC token account
+      <code style="font-size:10px;color:var(--cyan)">HwdwwKH…EQL</code> owned by the Bulktrade vault — this is the live total USDC locked.
+      <br><br>
+      <strong>User deposit:</strong> Scans your wallet's transaction history since June 1, 2026. Any transaction that interacts with the Bulktrade vault is parsed to find the net USDC change in the vault's token account — positive = deposit, negative = withdrawal. Net result = your current effective deposit.
+      <br><br>
+      <strong>Share calculation:</strong> <em>your deposit ÷ total vault USDC</em> at the time of each Saturday distribution. This page uses the current vault balance as a proxy for past distribution snapshots.
+      <br><br>
+      <strong>Weekly AURA:</strong> 1,000,000 AURA every Saturday at 00:00 UTC. Your allocation = share × 1,000,000. Past distributions (before loading this page) are estimated using your current share as a constant approximation.
+      <div class="meth-tags">
+        <span class="meth-tag">Source: Helius RPC</span>
+        <span class="meth-tag">Vault: 7Wpp33…jjGt</span>
+        <span class="meth-tag">1M AURA/week</span>
+        <span class="meth-tag">Season 1 · Jun 2026</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SEASON_START_TS   = 1748736000;          // Jun 1 2026 00:00 UTC (Monday)
+const FIRST_SAT_TS      = 1748736000 + 5*86400; // Jun 6 2026 (first Saturday)
+const WEEKLY_AURA       = 1_000_000;
+const PRESEASON_AURA    = 500_000;
+const VAULT_ADDR        = '7Wpp33Dn5KKUFjaij4zKYy1XZ9kdBtHjUatAT6NcjjGt';
+const VAULT_USDC_ACCT   = 'HwdwwKH1tMXo7ggTKcA5cdQrpcgqSoVib2eQh3BiyEQL';
+const HELIUS_KEY        = '0514f30d-4212-488a-a160-29009a5d5740';
+const FDV_LIST          = [1, 5, 10, 50, 100, 500];   // millions
+const AURA_TOTAL_SUPPLY = 1_000_000_000;               // 1B assumption (30% = 300M airdrop)
+
+let vaultTotal  = 0;
+let userDeposit = 0;
+let userShare   = 0;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmt(n, d=0) { return (isFinite(n)&&n!=null) ? n.toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:d}) : '—'; }
+function fmtShort(n) {
+  if (!isFinite(n)||n==null) return '—';
+  if (Math.abs(n)>=1e9) return (n/1e9).toFixed(2)+'B';
+  if (Math.abs(n)>=1e6) return (n/1e6).toFixed(2)+'M';
+  if (Math.abs(n)>=1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toLocaleString();
+}
+function fmtUSD(n) { return '$' + fmt(n, n<10?2:0); }
+function getRpc() {
+  const k = (localStorage.getItem('analytiq_rpc_key') || HELIUS_KEY).trim();
+  return `https://mainnet.helius-rpc.com/?api-key=${k}`;
+}
+async function rpcPost(method, params) {
+  const res = await fetch(getRpc(), {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0',id:1,method,params}),
+  });
+  const d = await res.json();
+  if (d.error) throw new Error(`RPC ${method}: ${d.error.message}`);
+  return d.result;
+}
+function setLoading(main, sub='') {
+  document.getElementById('loading-text').textContent = main;
+  document.getElementById('loading-sub').textContent = sub;
+}
+
+// Get all Saturdays in range [FIRST_SAT_TS, endTs]
+function getSaturdays(endTs) {
+  const sats = [];
+  let ts = FIRST_SAT_TS;
+  while (ts <= endTs) { sats.push(ts); ts += 7*86400; }
+  return sats;
+}
+
+function formatDate(ts) {
+  return new Date(ts*1000).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
+}
+
+// ── Load vault total ──────────────────────────────────────────────────────────
+async function loadVaultTotal() {
+  try {
+    const result = await rpcPost('getTokenAccountBalance', [VAULT_USDC_ACCT]);
+    vaultTotal = result.value.uiAmount || 0;
+  } catch { vaultTotal = 0; }
+  const el = document.getElementById('vault-total');
+  const el2 = document.getElementById('vault-total-card');
+  if (el)  el.textContent  = '$' + fmtShort(vaultTotal);
+  if (el2) el2.textContent = '$' + fmtShort(vaultTotal);
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+function updateCountdown() {
+  const now = Math.floor(Date.now()/1000);
+  // Find next Saturday
+  let nextSat = FIRST_SAT_TS;
+  while (nextSat <= now) nextSat += 7*86400;
+
+  document.getElementById('next-sat-date').textContent =
+    'Saturday, ' + formatDate(nextSat);
+
+  const diff = nextSat - now;
+  const d = Math.floor(diff/86400);
+  const h = Math.floor((diff%86400)/3600);
+  const m = Math.floor((diff%3600)/60);
+  const s = diff % 60;
+  document.getElementById('countdown-timer').textContent =
+    `${d}d ${h}h ${m}m ${s}s`;
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+// ── Render distribution table ─────────────────────────────────────────────────
+function renderDistTable() {
+  const now = Math.floor(Date.now()/1000);
+  const LOOKAHEAD_WEEKS = 8;
+  const endTs = FIRST_SAT_TS + LOOKAHEAD_WEEKS * 7 * 86400;
+  const sats  = getSaturdays(endTs);
+  const pastSats  = sats.filter(s => s < now);
+  const nextSat   = sats.find(s => s >= now);
+  const futureSats = sats.filter(s => s > (nextSat || 0));
+
+  // Completed
+  const satsDone = pastSats.length;
+  document.getElementById('sats-done').textContent = satsDone;
+  document.getElementById('sats-done-sub').textContent =
+    fmt(satsDone * WEEKLY_AURA) + ' AURA distributed';
+
+  const tbody = document.getElementById('dist-tbody');
+  tbody.innerHTML = '';
+
+  let i = 1;
+  for (const ts of pastSats) {
+    const myAura = userShare * WEEKLY_AURA;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="td-num">${i++}</td>
+      <td>${formatDate(ts)}</td>
+      <td><span class="badge-done">✓ Done</span></td>
+      <td class="td-num">${fmt(WEEKLY_AURA)}</td>
+      <td class="td-num">${userShare > 0 ? (userShare*100).toFixed(4) + '%' : '—'}</td>
+      <td class="td-num" style="color:var(--aura)">${userShare > 0 ? fmtShort(myAura) : '—'}</td>`;
+    tbody.appendChild(row);
+  }
+
+  if (nextSat) {
+    const myAura = userShare * WEEKLY_AURA;
+    const row = document.createElement('tr');
+    row.style.background = 'rgba(232,121,249,.04)';
+    row.innerHTML = `
+      <td class="td-num">${i++}</td>
+      <td><strong>${formatDate(nextSat)}</strong></td>
+      <td><span class="badge-next">Next</span></td>
+      <td class="td-num">${fmt(WEEKLY_AURA)}</td>
+      <td class="td-num">${userShare > 0 ? (userShare*100).toFixed(4) + '%' : '—'}</td>
+      <td class="td-num" style="color:var(--aura);font-weight:800">${userShare > 0 ? fmtShort(myAura) : '—'}</td>`;
+    tbody.appendChild(row);
+  }
+
+  for (const ts of futureSats.slice(0, 5)) {
+    const myAura = userShare * WEEKLY_AURA;
+    const row = document.createElement('tr');
+    row.classList.add('td-future');
+    row.innerHTML = `
+      <td class="td-num">${i++}</td>
+      <td>${formatDate(ts)}</td>
+      <td><span class="badge-future">Upcoming</span></td>
+      <td class="td-num">${fmt(WEEKLY_AURA)}</td>
+      <td class="td-num">${userShare > 0 ? (userShare*100).toFixed(4) + '%' : '—'}</td>
+      <td class="td-num">${userShare > 0 ? fmtShort(myAura) : '—'}</td>`;
+    tbody.appendChild(row);
+  }
+}
+
+// ── Render FDV grid ───────────────────────────────────────────────────────────
+function renderFdvGrid() {
+  const now = Math.floor(Date.now()/1000);
+  const LOOKAHEAD_WEEKS = 8;
+  const sats = getSaturdays(FIRST_SAT_TS + LOOKAHEAD_WEEKS * 7 * 86400);
+  const remainingSats = sats.filter(s => s >= now).length;
+  const pastSats = sats.filter(s => s < now).length;
+  const totalMyAura = userShare * WEEKLY_AURA * (pastSats + remainingSats);
+
+  const grid = document.getElementById('fdv-grid');
+  grid.innerHTML = FDV_LIST.map(fdvM => {
+    const price = (fdvM * 1_000_000) / AURA_TOTAL_SUPPLY;
+    const usd   = totalMyAura * price;
+    return `<div class="fdv-card">
+      <div class="fdv-label">$${fdvM >= 1000 ? (fdvM/1000)+'B' : fdvM+'M'} FDV</div>
+      <div class="fdv-price">$${price < 0.001 ? price.toExponential(2) : price < 1 ? price.toFixed(4) : price.toFixed(2)}/AURA</div>
+      <div class="fdv-value">${userShare > 0 ? fmtUSD(usd) : '—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Update hero ───────────────────────────────────────────────────────────────
+function renderHero() {
+  const now = Math.floor(Date.now()/1000);
+  const sats = getSaturdays(now);
+  let nextSat = FIRST_SAT_TS;
+  while (nextSat <= now) nextSat += 7*86400;
+  const remainSats = getSaturdays(FIRST_SAT_TS + 8*7*86400).filter(s => s >= now).length;
+  const pastSats   = sats.length;
+
+  const pastAura   = userShare * WEEKLY_AURA * pastSats;
+  const nextAura   = userShare * WEEKLY_AURA;
+  const totalAura  = pastAura + nextAura + (userShare * WEEKLY_AURA * (remainSats - 1));
+
+  document.getElementById('hero-total').textContent = userShare > 0 ? fmtShort(totalAura) : '—';
+  document.getElementById('hero-sub').textContent = userShare > 0
+    ? `Based on ${(userShare*100).toFixed(4)}% share · ${pastSats} past + ${remainSats} upcoming distributions`
+    : 'Enter your wallet to see your estimate';
+  document.getElementById('hero-next').textContent  = userShare > 0 ? fmtShort(nextAura) + ' AURA' : '— AURA';
+  document.getElementById('hero-past').textContent  = userShare > 0 ? fmtShort(pastAura) + ' AURA' : '— AURA';
+  document.getElementById('hero-weeks-left').textContent = remainSats;
+}
+
+// ── Load user deposits from on-chain ─────────────────────────────────────────
+async function loadWallet() {
+  const raw  = document.getElementById('wallet-input').value.trim();
+  const errEl= document.getElementById('error-msg');
+  const srcEl= document.getElementById('source-msg');
+  const btn  = document.getElementById('load-btn');
+  errEl.style.display = 'none'; srcEl.textContent = '';
+
+  if (!raw) {
+    errEl.textContent = 'Paste a Solana wallet address.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(raw)) {
+    errEl.textContent = 'Invalid Solana address.';
+    errEl.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Loading…';
+  document.getElementById('loading-overlay').classList.add('active');
+
+  try {
+    setLoading('Scanning wallet transactions…', 'Fetching signatures since Jun 1 2026');
+
+    // Step 1: collect all user sigs since season start
+    const sigs = [];
+    let before;
+    while (true) {
+      const opts = {limit:100,commitment:'confirmed'};
+      if (before) opts.before = before;
+      const page = await rpcPost('getSignaturesForAddress', [raw, opts]);
+      if (!page?.length) break;
+      sigs.push(...page.filter(s => (s.blockTime||0) >= SEASON_START_TS));
+      const last = page[page.length-1];
+      if ((last.blockTime||0) < SEASON_START_TS || page.length < 100) break;
+      before = last.signature;
+    }
+
+    setLoading(`Scanning ${sigs.length} transactions…`, 'Looking for Bulktrade vault interactions');
+
+    // Step 2: batch-fetch and parse
+    let netDeposit = 0;
+    let vaultTxCount = 0;
+    const BATCH = 20;
+    for (let i = 0; i < sigs.length; i += BATCH) {
+      setLoading(
+        `Parsing transactions (${Math.min(i+BATCH, sigs.length)}/${sigs.length})…`,
+        'Filtering Bulktrade vault interactions'
+      );
+      const batch = sigs.slice(i, i+BATCH);
+      const txns = await Promise.all(batch.map(s =>
+        rpcPost('getTransaction', [s.signature, {encoding:'jsonParsed',maxSupportedTransactionVersion:0}])
+          .catch(() => null)
+      ));
+      for (const tx of txns) {
+        if (!tx) continue;
+        const keys = (tx.transaction?.message?.accountKeys || [])
+          .map(k => typeof k === 'string' ? k : k?.pubkey || '');
+        if (!keys.includes(VAULT_ADDR) && !keys.includes(VAULT_USDC_ACCT)) continue;
+        vaultTxCount++;
+
+        // Find vault USDC account index
+        const vIdx = keys.indexOf(VAULT_USDC_ACCT);
+        if (vIdx < 0) continue;
+
+        const pre  = (tx.meta?.preTokenBalances  || []).find(b => b.accountIndex === vIdx);
+        const post = (tx.meta?.postTokenBalances || []).find(b => b.accountIndex === vIdx);
+        const preAmt  = pre?.uiTokenAmount?.uiAmount  || 0;
+        const postAmt = post?.uiTokenAmount?.uiAmount || 0;
+        netDeposit += (postAmt - preAmt);
+      }
+    }
+
+    userDeposit = Math.max(0, netDeposit);
+    userShare   = vaultTotal > 0 ? userDeposit / vaultTotal : 0;
+
+    // Update sidebar
+    document.getElementById('user-stats').style.display = 'flex';
+    document.getElementById('user-deposit').textContent = '$' + fmt(userDeposit, 2);
+    document.getElementById('user-share').textContent   = (userShare*100).toFixed(4) + '%';
+    document.getElementById('user-share-sub').textContent =
+      `of $${fmtShort(vaultTotal)} vault`;
+    document.getElementById('user-next-aura').textContent =
+      fmtShort(userShare * WEEKLY_AURA);
+
+    srcEl.textContent = `${vaultTxCount} vault tx${vaultTxCount!==1?'s':''} found · ${sigs.length} total scanned`;
+
+    // Re-render everything
+    renderHero();
+    renderDistTable();
+    renderFdvGrid();
+
+  } catch(e) {
+    errEl.textContent = 'Failed to load wallet: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    document.getElementById('loading-overlay').classList.remove('active');
+    btn.disabled = false; btn.textContent = 'Load Wallet';
+  }
+}
+
+// ── URL param auto-load ────────────────────────────────────────────────────────
+(async () => {
+  await loadVaultTotal();
+  renderHero();
+  renderDistTable();
+  renderFdvGrid();
+
+  const params = new URLSearchParams(location.search);
+  const w = params.get('wallet') || params.get('addr') || '';
+  if (w && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w)) {
+    document.getElementById('wallet-input').value = w;
+    loadWallet();
+  }
+})();
+</script>
+</body>
+</html>
