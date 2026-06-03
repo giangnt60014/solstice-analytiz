@@ -1,14 +1,10 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/calculator.html" },
-    {
-      "source": "/api/bw/:address",
-      "destination": "https://early.bulk.trade/api/aura/v1/aura/wallet/:address"
-    }
+    { "source": "/", "destination": "/calculator.html" }
   ],
   "headers": [
     {
-      "source": "/api/bw/(.*)",
+      "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Cache-Control", "value": "no-store" }

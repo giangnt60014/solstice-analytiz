@@ -286,6 +286,7 @@ body { min-height: 100vh; }
   <nav class="header-nav">
     <a href="calculator.html">Calculator</a>
     <a href="#" style="color:white;">Dashboard</a>
+    <a href="https://bulktrade-analytiz.vercel.app" target="_blank" rel="noopener">Bulktrade S1 ↗</a>
     <a href="https://app.solstice.finance/?ref=JxeE7iMzNm" class="open-app" target="_blank" rel="noopener">Open App ↗</a>
   </nav>
 </header>
@@ -1158,7 +1159,7 @@ async function handleSearch() {
 
 async function loadDashboard(addr, forceRefresh = false) {
   setState('loading');
-  setLoadingMsg('Loading from index…');
+  setLoadingMsg('Loading…');
 
   // ── Path A: Hanyon analytics index (primary) ──────────────────────────────
   let walletJson = null;
@@ -1285,7 +1286,7 @@ function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
   const badgeCls   = isOnChain ? (fromCache ? (isStale ? 'cached' : 'cached') : 'live') : 'hanyon';
   const badgeTxt   = isOnChain
     ? (fromCache ? `⏱ cached ${ageLabel}` : '⚡ On-chain · live')
-    : '📦 Hanyon index';
+    : '⚡ Live data';
   const refreshBtn = isOnChain
     ? `<button class="oc-refresh-btn" onclick="loadDashboard('${addr}', true)">↺ Refresh</button>`
     : '';
