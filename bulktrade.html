@@ -365,8 +365,7 @@ const FIRST_SAT_TS      = 1780704000;           // Jun 6 2026 00:00 UTC (first S
 const WEEKLY_AURA       = 1_000_000;
 const VAULT_USDC_ACCT   = 'HwdwwKH1tMXo7ggTKcA5cdQrpcgqSoVib2eQh3BiyEQL';
 const HELIUS_KEY        = '0514f30d-4212-488a-a160-29009a5d5740';
-const FDV_LIST          = [50, 100, 200, 300, 500, 1000];  // millions
-const AURA_TOTAL_SUPPLY = 1_000_000_000;                   // 1B assumption
+const FDV_LIST = [50, 100, 200, 300, 500, 1000];   // millions
 
 let vaultTotal   = 0;
 let userDeposit  = 0;
@@ -511,6 +510,8 @@ function renderDistTable() {
 }
 
 // ── Render FDV grid ───────────────────────────────────────────────────────────
+// price/AURA = 30% × FDV / total_distributed_AURA
+// total_distributed_AURA = 500K pre-season retro + 1M × seasonWeeks
 function renderFdvGrid(apiData) {
   const now  = Math.floor(Date.now()/1000);
   const sats = getSaturdays(FIRST_SAT_TS + seasonWeeks * 7 * 86400);
@@ -520,9 +521,12 @@ function renderFdvGrid(apiData) {
   const s1Aura     = userShare * WEEKLY_AURA * (past + remaining);
   const totalMyAura= retroAura + s1Aura;
 
+  // Total AURA distributed across all participants (denominator for price calc)
+  const totalDistributed = 500_000 + WEEKLY_AURA * seasonWeeks;
+
   const grid = document.getElementById('fdv-grid');
   grid.innerHTML = FDV_LIST.map(fdvM => {
-    const price = (fdvM * 1_000_000) / AURA_TOTAL_SUPPLY;
+    const price = 0.30 * (fdvM * 1_000_000) / totalDistributed;
     const usd   = totalMyAura * price;
     return `<div class="fdv-card">
       <div class="fdv-label">$${fdvM >= 1000 ? (fdvM/1000)+'B' : fdvM+'M'} FDV</div>
