@@ -510,27 +510,31 @@ function renderDistTable() {
 }
 
 // ── Render FDV grid ───────────────────────────────────────────────────────────
-// price/AURA = 30% × FDV / total_distributed_AURA
-// total_distributed_AURA = 500K pre-season retro + 1M × seasonWeeks
+// USD value = your_share_of_airdrop_pool × 30% × FDV
+//
+// your_share = (retroAura + userShare × 1M × seasonWeeks)
+//              ─────────────────────────────────────────
+//              (500K retro pool + 1M × seasonWeeks)
+//
+// Note: weeks nearly cancels in numerator and denominator so USD value
+// is roughly constant regardless of season length (your AURA grows
+// proportionally with total AURA). The 500K retro pool causes a small
+// asymmetry but doesn't move the number materially.
 function renderFdvGrid(apiData) {
-  const now  = Math.floor(Date.now()/1000);
-  const sats = getSaturdays(FIRST_SAT_TS + seasonWeeks * 7 * 86400);
-  const remaining  = sats.filter(s => s >= now).length;
-  const past       = sats.filter(s => s < now).length;
-  const retroAura  = apiData?.aura ?? 0;
-  const s1Aura     = userShare * WEEKLY_AURA * (past + remaining);
-  const totalMyAura= retroAura + s1Aura;
-
-  // Total AURA distributed across all participants (denominator for price calc)
-  const totalDistributed = 500_000 + WEEKLY_AURA * seasonWeeks;
+  const retroAura        = apiData?.aura ?? 0;
+  const totalMyAura      = retroAura + userShare * WEEKLY_AURA * seasonWeeks;
+  const totalDistributed = 500_000   + WEEKLY_AURA * seasonWeeks;
+  // Your fraction of the 30% airdrop pool
+  const yourFraction     = totalDistributed > 0 ? totalMyAura / totalDistributed : 0;
 
   const grid = document.getElementById('fdv-grid');
   grid.innerHTML = FDV_LIST.map(fdvM => {
-    const price = 0.30 * (fdvM * 1_000_000) / totalDistributed;
-    const usd   = totalMyAura * price;
+    const airdropPool = 0.30 * fdvM * 1_000_000;
+    const usd         = yourFraction * airdropPool;
+    const pricePerAura= totalMyAura > 0 ? usd / totalMyAura : 0;
     return `<div class="fdv-card">
       <div class="fdv-label">$${fdvM >= 1000 ? (fdvM/1000)+'B' : fdvM+'M'} FDV</div>
-      <div class="fdv-price">$${price < 0.001 ? price.toExponential(2) : price < 1 ? price.toFixed(4) : price.toFixed(2)}/AURA</div>
+      <div class="fdv-price">$${pricePerAura < 0.001 ? pricePerAura.toExponential(2) : pricePerAura < 1 ? pricePerAura.toFixed(4) : pricePerAura.toFixed(2)}/AURA</div>
       <div class="fdv-value">${(userShare > 0 || retroAura > 0) ? fmtUSD(usd) : '—'}</div>
     </div>`;
   }).join('');
