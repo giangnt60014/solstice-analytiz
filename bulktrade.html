@@ -346,23 +346,24 @@ tr:last-child td { border-bottom: none; }
     <!-- Methodology -->
     <div class="section-head"><h2>Methodology</h2></div>
     <div class="meth-box">
-      <strong>User data:</strong> Fetched directly from the Bulktrade API
-      (<code style="font-size:10px;color:var(--cyan)">early.bulk.trade/api/aura/v1/aura/wallet/{address}</code>).
-      Returns <code>current_amount</code> (active USDC deposit), <code>aura</code> (retroactive AURA earned),
-      rank, and category breakdown — no transaction scanning needed.
+      <strong>Share calculation:</strong> Your estimated AURA per week = <em>(your deposit ÷ total vault) × 1,000,000</em>.
+      Deposit and vault balances are fetched live from Bulktrade.
       <br><br>
-      <strong>Vault total:</strong> Live USDC balance of the vault token account
-      <code style="font-size:10px;color:var(--cyan)">HwdwwKH…EQL</code> via Helius RPC — one call, instant.
+      <strong>Airdrop value:</strong> <em>USD = (your AURA ÷ total distributed AURA) × airdrop% × FDV</em>.
+      Total distributed AURA = 500,000 pre-season retro + 1,000,000 × season weeks.
       <br><br>
-      <strong>Share calculation:</strong> <em>your current_amount ÷ total vault USDC</em>.
+      <strong>Simplification:</strong> This calculator does <em>not</em> account for the time-weighted deposit mechanism.
+      In practice, Bulktrade weights AURA by how long each deposit has been held — users who deposit earlier
+      or hold longer may earn more AURA than this estimate suggests. Treat these numbers as a floor, not a ceiling.
       <br><br>
-      <strong>Weekly AURA:</strong> 1,000,000 AURA every Saturday at 00:00 UTC starting Jun 6, 2026.
-      Your allocation = share × 1,000,000. Retroactive AURA (pre-season) is taken directly from the API.
+      <strong>⚠️ Disclaimer:</strong> This is an independent community tool, not affiliated with Bulktrade.
+      All figures are estimates based on publicly available data and assumed parameters (airdrop %, FDV, season length).
+      Actual AURA distribution may differ. Do not make financial decisions based solely on these projections.
       <div class="meth-tags">
-        <span class="meth-tag">Source: Bulktrade API</span>
-        <span class="meth-tag">Vault: 7Wpp33…jjGt</span>
+        <span class="meth-tag">Community tool · not official</span>
         <span class="meth-tag">1M AURA/week</span>
         <span class="meth-tag">Season 1 · Jun 2026</span>
+        <span class="meth-tag">Estimates only</span>
       </div>
     </div>
   </div>
