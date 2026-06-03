@@ -330,7 +330,19 @@ tr:last-child td { border-bottom: none; }
     </div>
 
     <!-- FDV scenarios -->
-    <div class="section-head"><h2>AURA value scenarios</h2></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="section-head" style="margin-bottom:0;flex:1"><h2>AURA value scenarios</h2></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span style="font-size:11px;font-weight:700;color:var(--text-3)">Airdrop %:</span>
+        <div style="display:flex;gap:4px">
+          <button class="weeks-btn" data-pct="10"  onclick="setAirdropPct(10)">10%</button>
+          <button class="weeks-btn" data-pct="20"  onclick="setAirdropPct(20)">20%</button>
+          <button class="weeks-btn active" data-pct="30" onclick="setAirdropPct(30)">30%</button>
+          <button class="weeks-btn" data-pct="40"  onclick="setAirdropPct(40)">40%</button>
+          <button class="weeks-btn" data-pct="50"  onclick="setAirdropPct(50)">50%</button>
+        </div>
+      </div>
+    </div>
     <div class="fdv-grid" id="fdv-grid"></div>
 
     <!-- Methodology -->
@@ -371,16 +383,25 @@ let vaultTotal   = 0;
 let userDeposit  = 0;
 let userShare    = 0;
 let seasonWeeks  = 8;
+let airdropPct   = 30;
 let lastApiData  = null;
 
 function setSeasonWeeks(n) {
   seasonWeeks = n;
-  document.querySelectorAll('.weeks-btn').forEach(b => {
+  document.querySelectorAll('[data-weeks]').forEach(b => {
     b.classList.toggle('active', +b.dataset.weeks === n);
   });
   renderDistTable();
   renderFdvGrid(lastApiData);
   renderHero(lastApiData);
+}
+
+function setAirdropPct(n) {
+  airdropPct = n;
+  document.querySelectorAll('[data-pct]').forEach(b => {
+    b.classList.toggle('active', +b.dataset.pct === n);
+  });
+  renderFdvGrid(lastApiData);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -510,32 +531,28 @@ function renderDistTable() {
 }
 
 // ── Render FDV grid ───────────────────────────────────────────────────────────
-// USD value = your_share_of_airdrop_pool × 30% × FDV
+// USD = (user's AURA / total_distributed_AURA) × airdropPct% × FDV
 //
-// your_share = (retroAura + userShare × 1M × seasonWeeks)
-//              ─────────────────────────────────────────
-//              (500K retro pool + 1M × seasonWeeks)
-//
-// Note: weeks nearly cancels in numerator and denominator so USD value
-// is roughly constant regardless of season length (your AURA grows
-// proportionally with total AURA). The 500K retro pool causes a small
-// asymmetry but doesn't move the number materially.
+// total_distributed_AURA = 500K pre-season retro + 1M × seasonWeeks
+// user's AURA            = retroAura (from API) + userShare × 1M × seasonWeeks
 function renderFdvGrid(apiData) {
   const retroAura        = apiData?.aura ?? 0;
-  const totalMyAura      = retroAura + userShare * WEEKLY_AURA * seasonWeeks;
+  const userAura         = retroAura + userShare * WEEKLY_AURA * seasonWeeks;
   const totalDistributed = 500_000   + WEEKLY_AURA * seasonWeeks;
-  // Your fraction of the 30% airdrop pool
-  const yourFraction     = totalDistributed > 0 ? totalMyAura / totalDistributed : 0;
+  const hasData          = userShare > 0 || retroAura > 0;
 
   const grid = document.getElementById('fdv-grid');
   grid.innerHTML = FDV_LIST.map(fdvM => {
-    const airdropPool = 0.30 * fdvM * 1_000_000;
-    const usd         = yourFraction * airdropPool;
-    const pricePerAura= totalMyAura > 0 ? usd / totalMyAura : 0;
+    const airdropPool  = (airdropPct / 100) * fdvM * 1_000_000;
+    const usd          = totalDistributed > 0 ? (userAura / totalDistributed) * airdropPool : 0;
+    const pricePerAura = userAura > 0 ? usd / userAura : 0;
+    const fmtPrice     = pricePerAura < 0.001 ? pricePerAura.toExponential(2)
+                       : pricePerAura < 1     ? pricePerAura.toFixed(4)
+                       :                        pricePerAura.toFixed(2);
     return `<div class="fdv-card">
       <div class="fdv-label">$${fdvM >= 1000 ? (fdvM/1000)+'B' : fdvM+'M'} FDV</div>
-      <div class="fdv-price">$${pricePerAura < 0.001 ? pricePerAura.toExponential(2) : pricePerAura < 1 ? pricePerAura.toFixed(4) : pricePerAura.toFixed(2)}/AURA</div>
-      <div class="fdv-value">${(userShare > 0 || retroAura > 0) ? fmtUSD(usd) : '—'}</div>
+      <div class="fdv-price">$${fmtPrice}/AURA</div>
+      <div class="fdv-value">${hasData ? fmtUSD(usd) : '—'}</div>
     </div>`;
   }).join('');
 }
