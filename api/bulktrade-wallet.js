@@ -17,11 +17,7 @@ export default async function handler(req) {
       `https://early.bulk.trade/api/aura/v1/aura/wallet/${address}`,
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Referer': 'https://early.bulk.trade/',
-          'Origin': 'https://early.bulk.trade',
+          'Accept': 'application/json',
         },
       }
     );
