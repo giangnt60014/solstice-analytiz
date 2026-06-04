@@ -194,6 +194,123 @@ select.s-select option { background: var(--navy-2); color: white; }
 .fdv-card .c-roi.pos { color: var(--green); }
 .fdv-card .c-roi.neg { color: var(--red); }
 
+/* ── Preset buttons ── */
+.preset-row { display: flex; gap: 5px; margin-bottom: 10px; }
+.preset-btn { flex: 1; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-2); font-size: 11px; font-weight: 700; padding: 6px 4px; cursor: pointer; transition: all .15s; white-space: nowrap; text-align: center; font-family: inherit; }
+.preset-btn:hover { border-color: var(--orange); color: var(--text-1); background: var(--orange-lt); }
+.preset-btn.active { border-color: var(--orange); color: var(--orange); background: var(--orange-lt); }
+
+/* ── Game HUD ── */
+.game-hud { background: linear-gradient(135deg, #0c1526 0%, #10192e 60%, #0f1528 100%); border: 1.5px solid rgba(124,106,247,.22); border-radius: var(--radius-lg); padding: 24px 28px; margin-bottom: 20px; position: relative; overflow: hidden; display: flex; gap: 24px; align-items: stretch; }
+.game-hud::before { content: ''; position: absolute; right: -60px; top: -60px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(124,106,247,.14) 0%, transparent 70%); pointer-events: none; }
+.game-hud-left { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.game-hud-right { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 100px; }
+.class-row { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.class-icon-big { font-size: 28px; line-height: 1; filter: drop-shadow(0 0 8px currentColor); }
+.class-info-label { font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); }
+.class-info-name { font-size: 17px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.power-label { font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--orange); }
+.power-num { font-size: 44px; font-weight: 900; letter-spacing: -0.04em; color: white; line-height: 1; font-variant-numeric: tabular-nums; }
+.power-unit { font-size: 16px; font-weight: 700; color: rgba(255,255,255,.35); margin-left: 5px; }
+.xp-bar-wrap { margin-top: 4px; }
+.xp-bar-labels { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: var(--text-3); margin-bottom: 5px; }
+.xp-bar-track { height: 6px; background: rgba(255,255,255,.07); border-radius: 3px; overflow: hidden; }
+.xp-bar-fill { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1); position: relative; }
+.xp-bar-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent); animation: xp-shimmer 2s infinite; }
+@keyframes xp-shimmer { 0%,100% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+.class-flavor { font-size: 11px; color: var(--text-3); font-style: italic; margin-top: 2px; }
+
+/* Dominance ring */
+.dominance-ring-wrap { position: relative; width: 80px; height: 80px; }
+.dominance-svg { width: 80px; height: 80px; transform: rotate(-90deg); }
+.dominance-track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 7; }
+.dominance-fill { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .6s cubic-bezier(.4,0,.2,1), stroke .3s; }
+.dominance-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.dominance-pct { font-size: 13px; font-weight: 900; color: white; font-variant-numeric: tabular-nums; line-height: 1; }
+.dominance-lbl { font-size: 7px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-top: 2px; text-align: center; }
+
+/* Mission stats bar */
+.mission-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.mission-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+.mission-stat.highlight { border-color: rgba(124,106,247,.35); background: rgba(124,106,247,.08); }
+.ms-label { font-size: 9px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+.ms-val { font-size: 20px; font-weight: 800; color: var(--text-1); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.ms-val.orange { color: var(--orange); }
+.ms-sub { font-size: 10px; color: var(--text-4); margin-top: 2px; }
+
+/* Achievement strip */
+.achievement-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; min-height: 0; }
+.achievement { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px 4px 8px; font-size: 11px; font-weight: 700; color: var(--text-2); opacity: .45; transition: all .3s; }
+.achievement.unlocked { opacity: 1; border-color: rgba(251,191,36,.3); color: var(--amber); background: rgba(251,191,36,.07); }
+.achievement.unlocked .ach-icon { filter: none; }
+.ach-icon { font-size: 14px; filter: grayscale(1); }
+
+/* Loot rarity FDV cards */
+.loot-card { border-radius: var(--radius); padding: 14px 16px; cursor: default; transition: transform .15s, box-shadow .2s; position: relative; overflow: hidden; }
+.loot-card:hover { transform: translateY(-2px); }
+.loot-card .loot-rarity { font-size: 8px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 4px; }
+.loot-card .loot-fdv { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.loot-card .loot-price { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+.loot-card .loot-usd { font-size: 18px; font-weight: 800; margin-top: 8px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.loot-card .loot-roi { font-size: 11px; font-weight: 700; margin-top: 3px; }
+.loot-card .loot-roi.pos { color: var(--green); }
+.loot-card .loot-roi.neg { color: var(--red); }
+/* shimmer on hover */
+.loot-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,.05), transparent 60%); opacity: 0; transition: opacity .2s; }
+.loot-card:hover::before { opacity: 1; }
+/* rarity variants */
+.loot-common   { background: rgba(120,113,108,.12); border: 1.5px solid rgba(120,113,108,.3); }
+.loot-common   .loot-rarity,.loot-common   .loot-usd { color: #a8a29e; }
+.loot-uncommon { background: rgba(34,197,94,.08);  border: 1.5px solid rgba(34,197,94,.25); }
+.loot-uncommon .loot-rarity,.loot-uncommon .loot-usd { color: #4ade80; }
+.loot-rare     { background: rgba(59,130,246,.1);  border: 1.5px solid rgba(59,130,246,.3); }
+.loot-rare     .loot-rarity,.loot-rare     .loot-usd { color: #93c5fd; }
+.loot-epic     { background: rgba(168,85,247,.1);  border: 1.5px solid rgba(168,85,247,.35); }
+.loot-epic     .loot-rarity,.loot-epic     .loot-usd { color: #d8b4fe; }
+.loot-legendary{ background: rgba(251,191,36,.1);  border: 1.5px solid rgba(251,191,36,.35); }
+.loot-legendary .loot-rarity,.loot-legendary .loot-usd { color: var(--amber); }
+.loot-mythic   { background: rgba(249,115,22,.1);  border: 1.5px solid rgba(249,115,22,.35); }
+.loot-mythic   .loot-rarity,.loot-mythic   .loot-usd { color: #fb923c; }
+.loot-divine   { background: rgba(244,63,94,.1);   border: 1.5px solid rgba(244,63,94,.35); }
+.loot-divine   .loot-rarity,.loot-divine   .loot-usd { color: #fb7185; }
+.loot-prismatic{ background: linear-gradient(135deg,rgba(124,106,247,.12),rgba(244,63,94,.08)); border: 1.5px solid rgba(255,255,255,.2); }
+.loot-prismatic .loot-rarity { background: linear-gradient(90deg,#7c6af7,#f472b6,#facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.loot-prismatic .loot-usd { background: linear-gradient(90deg,#7c6af7,#f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* Level-up toast */
+.levelup-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%) translateY(-20px); background: linear-gradient(135deg,#1a1040,#2a1060); border: 2px solid var(--orange); border-radius: var(--radius-lg); padding: 12px 28px; font-size: 14px; font-weight: 800; color: white; z-index: 999; pointer-events: none; opacity: 0; transition: opacity .3s, transform .3s; white-space: nowrap; }
+.levelup-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Confetti */
+@keyframes confetti-fall { to { transform: translate(var(--dx), calc(var(--dy) + 200px)) rotate(var(--rot)) scale(0); opacity: 0; } }
+.confetti-p { position: fixed; width: 7px; height: 7px; border-radius: 2px; pointer-events: none; z-index: 9999; animation: confetti-fall .9s ease-out forwards; }
+
+/* Tier badge (kept for sidebar compat) */
+.tier-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 8px; border: 1.5px solid; }
+.tier-progress-wrap { margin-top: 6px; }
+.tier-progress-label { font-size: 10px; color: var(--text-3); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.tier-progress-track { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; }
+.tier-progress-fill { height: 100%; border-radius: 2px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+
+/* ── SLX pop animation ── */
+@keyframes slx-pop { 0% { transform: scale(1); } 30% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.slx-pop { animation: slx-pop .35s ease-out; }
+
+/* ── FDV slider ── */
+.fdv-slide-hero { background: linear-gradient(135deg, var(--surface), var(--surface-2)); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 16px; position: relative; overflow: hidden; }
+.fdv-slide-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 70% 50%, rgba(124,106,247,.07), transparent 65%); pointer-events: none; }
+.fdv-slide-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.fdv-slide-usd { font-size: 40px; font-weight: 900; color: var(--text-1); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; transition: all .12s; }
+.fdv-slide-sub { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+input[type=range].fdv-range { -webkit-appearance: none; width: 100%; height: 5px; background: linear-gradient(to right, var(--orange) var(--fdv-pct,37.5%), rgba(255,255,255,.1) var(--fdv-pct,37.5%)); border-radius: 3px; outline: none; cursor: pointer; margin-top: 14px; display: block; }
+input[type=range].fdv-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--orange); border-radius: 50%; box-shadow: 0 0 0 3px rgba(124,106,247,.25); transition: box-shadow .15s; }
+input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(124,106,247,.2); }
+.fdv-range-marks { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-4); margin-top: 5px; font-weight: 600; letter-spacing: .02em; }
+
+/* ── Live ticker ── */
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+.live-dot { display: inline-block; width: 5px; height: 5px; background: var(--green); border-radius: 50%; margin-right: 4px; animation: blink 1.4s ease-in-out infinite; vertical-align: middle; }
+
 /* ── Notes ── */
 .notes-box {
   background: var(--surface); border: 1px solid var(--border);
@@ -384,6 +501,12 @@ select.s-select option { background: var(--navy-2); color: white; }
 
     <div class="sidebar-section">
       <div class="sidebar-label">Your position</div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="fillPreset(100e6)">🌱 100M</button>
+        <button class="preset-btn" onclick="fillPreset(500e6)">🔥 500M</button>
+        <button class="preset-btn" onclick="fillPreset(2e9)">🐋 2B</button>
+        <button class="preset-btn" onclick="fillPreset(10e9)">🏆 10B</button>
+      </div>
       <div class="s-field">
         <label class="s-label" for="calc-total">Your flares at end date</label>
         <input id="calc-total" type="text" class="s-input" value="0" inputmode="decimal" placeholder="e.g. 5M or 5,000,000"
@@ -540,37 +663,95 @@ select.s-select option { background: var(--navy-2); color: white; }
       </div>
     </div>
 
-    <!-- Hero -->
-    <div class="hero-block">
-      <div class="hero-eyebrow">Projected SLX allocation</div>
-      <div>
-        <span class="hero-slx" id="calc-slx">0</span>
-        <span class="hero-slx-unit">SLX</span>
+    <!-- Level-up toast (hidden) -->
+    <div class="levelup-toast" id="levelup-toast">⬆️ TIER UP!</div>
+
+    <!-- Game HUD -->
+    <div class="game-hud" id="game-hud">
+      <div class="game-hud-left">
+        <div class="class-row">
+          <span class="class-icon-big" id="class-icon">🌱</span>
+          <div>
+            <div class="class-info-label">Commander Class</div>
+            <div class="class-info-name" id="class-name" style="color:#86efac">Seedling</div>
+          </div>
+        </div>
+        <div class="power-label">Power Level</div>
+        <div>
+          <span class="power-num hero-slx" id="calc-slx">0</span>
+          <span class="power-unit">SLX</span>
+        </div>
+        <div class="xp-bar-wrap" id="xp-bar-wrap" style="display:none">
+          <div class="xp-bar-labels">
+            <span id="xp-from-label"></span>
+            <span id="xp-to-label"></span>
+          </div>
+          <div class="xp-bar-track">
+            <div class="xp-bar-fill" id="xp-bar-fill"></div>
+          </div>
+        </div>
+        <div class="class-flavor" id="class-flavor">Enter your flares to begin your conquest.</div>
+        <div id="slx-tier-wrap" style="display:none;"></div>
       </div>
-      <div class="hero-sub" id="calc-you">Enter your flares on the left to see your estimate</div>
+      <div class="game-hud-right">
+        <div class="dominance-ring-wrap">
+          <svg class="dominance-svg" viewBox="0 0 100 100">
+            <circle class="dominance-track" cx="50" cy="50" r="40"/>
+            <circle class="dominance-fill" id="dom-fill" cx="50" cy="50" r="40"
+              stroke="#7c6af7" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+          </svg>
+          <div class="dominance-center">
+            <div class="dominance-pct" id="calc-share">0%</div>
+            <div class="dominance-lbl">dominance</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:8px">
+          <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">S2 Flares</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-2)" id="calc-you-mini"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Metrics -->
-    <div class="metrics">
-      <div class="metric-card">
-        <div class="m-label">Days remaining</div>
-        <div class="m-val" id="calc-days">—</div>
-        <div class="m-sub" id="calc-end-label">until end date</div>
+    <!-- Achievement strip -->
+    <div class="achievement-strip" id="achievement-strip">
+      <div class="achievement" id="ach-loaded" data-label="Wallet Loaded"><span class="ach-icon">🔗</span>Wallet Loaded</div>
+      <div class="achievement" id="ach-ember"  data-label="Ember Rank"><span class="ach-icon">🔥</span>Ember Rank</div>
+      <div class="achievement" id="ach-crystal" data-label="Crystal Rank"><span class="ach-icon">💎</span>Crystal Rank</div>
+      <div class="achievement" id="ach-nova"   data-label="Nova Rank"><span class="ach-icon">🌟</span>Nova Rank</div>
+      <div class="achievement" id="ach-whale"  data-label="Whale Mode"><span class="ach-icon">🐋</span>Whale Mode</div>
+      <div class="achievement" id="ach-top1"   data-label="Top 1% Network"><span class="ach-icon">🏆</span>Top 1% Network</div>
+    </div>
+
+    <!-- Mission stats -->
+    <div class="mission-bar">
+      <div class="mission-stat">
+        <div class="ms-label">⏱ Days remaining</div>
+        <div class="ms-val" id="calc-days">—</div>
+        <div class="ms-sub" id="calc-end-label">until season end</div>
       </div>
-      <div class="metric-card">
-        <div class="m-label">Network share</div>
-        <div class="m-val orange" id="calc-share">0.0000%</div>
-        <div class="m-sub">of total S2 flares</div>
+      <div class="mission-stat highlight">
+        <div class="ms-label">💰 Loot at $100M</div>
+        <div class="ms-val orange" id="calc-usd-100m">$0</div>
+        <div class="ms-sub">estimated USD drop</div>
       </div>
-      <div class="metric-card">
-        <div class="m-label">At $100M FDV</div>
-        <div class="m-val" id="calc-usd-100m">$0</div>
-        <div class="m-sub">estimated USD value</div>
+      <div class="mission-stat">
+        <div class="ms-label">📡 Network share</div>
+        <div class="ms-val orange" id="calc-share-2">0.0000%</div>
+        <div class="ms-sub">of total S2 flares</div>
       </div>
     </div>
 
-    <!-- FDV scenarios -->
-    <div class="section-head"><h2>USD value by FDV scenario</h2></div>
+    <!-- Loot table -->
+    <div class="section-head"><h2>⚔️ Loot Table — drag to explore</h2></div>
+    <div class="fdv-slide-hero">
+      <div class="fdv-slide-label">FDV scenario</div>
+      <div class="fdv-slide-usd" id="fdv-slide-usd">$0</div>
+      <div class="fdv-slide-sub" id="fdv-slide-sub">at $150M FDV · $0.150/SLX</div>
+      <input type="range" class="fdv-range" id="fdv-range" min="0" max="7" step="1" value="3" oninput="onFdvSlide(this)">
+      <div class="fdv-range-marks">
+        <span>$30M</span><span>$50M</span><span>$100M</span><span>$150M</span><span>$200M</span><span>$300M</span><span>$400M</span><span>$500M</span>
+      </div>
+    </div>
     <div class="fdv-grid" id="calc-fdv-cards">
       <!-- populated by JS -->
     </div>
@@ -681,12 +862,187 @@ function refreshSysProjection() {
   document.getElementById('calc-sys-total').value = fmt(total)||'0';
   const hint = document.getElementById('calc-sys-hint');
   if (sysNow) {
-    hint.textContent = `${fmt(sysNow)} now + ${fmt(avgD)}/d × ${days}d (${dCount}d avg)`;
+    hint.innerHTML = `<span class="live-dot"></span><span id="live-sys-num">${fmt(sysNow)}</span> now · +${fmt(avgD)}/d`;
     hint.className = 's-hint live';
   } else {
     hint.textContent = 'Loading from Solstice…';
     hint.className = 's-hint';
   }
+}
+
+// ── Scenario presets ──────────────────────────────────────────────────────────
+function fillPreset(val) {
+  const el = document.getElementById('calc-total');
+  const labels = { [100e6]:'100M', [500e6]:'500M', [2e9]:'2B', [10e9]:'10B' };
+  el.value = labels[val] || (val >= 1e9 ? (val/1e9).toFixed(0)+'B' : (val/1e6).toFixed(0)+'M');
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  renderResults();
+}
+
+// ── Game tier system ──────────────────────────────────────────────────────────
+const TIERS = [
+  { min:     0, max:    100, name:'Seedling',  icon:'🌱', color:'#86efac', flavor:'You have just begun your journey...' },
+  { min:   100, max:    500, name:'Ember',     icon:'🔥', color:'#fb923c', flavor:'The spark ignites. Keep grinding.' },
+  { min:   500, max:   2000, name:'Charged',   icon:'⚡', color:'#facc15', flavor:'The air crackles with potential.' },
+  { min:  2000, max:  10000, name:'Crystal',   icon:'💎', color:'#67e8f9', flavor:'Clarity. Focus. Power.' },
+  { min: 10000, max:  50000, name:'Nova',       icon:'🌟', color:'#c084fc', flavor:'Stars are born from pressure.' },
+  { min: 50000, max:Infinity,name:'Supernova', icon:'🚀', color:'#f472b6', flavor:'You are the event horizon.' },
+];
+
+const LOOT_RARITY = [
+  { label:'COMMON',    cls:'loot-common' },
+  { label:'UNCOMMON',  cls:'loot-uncommon' },
+  { label:'RARE',      cls:'loot-rare' },
+  { label:'EPIC',      cls:'loot-epic' },
+  { label:'LEGENDARY', cls:'loot-legendary' },
+  { label:'MYTHIC',    cls:'loot-mythic' },
+  { label:'DIVINE',    cls:'loot-divine' },
+  { label:'PRISMATIC', cls:'loot-prismatic' },
+];
+
+let _currentTier = TIERS[0];
+
+function getTier(slx) {
+  return TIERS.find(t => slx >= t.min && slx < t.max) || TIERS[0];
+}
+
+function updateGameHUD(slx, share) {
+  const tier = getTier(slx);
+  const next = TIERS[TIERS.indexOf(tier) + 1];
+  const xpPct = next ? Math.min(100, ((slx - tier.min) / (next.min - tier.min)) * 100) : 100;
+  const tieredUp = tier !== _currentTier && _currentTier && slx > 0;
+
+  // Class
+  const iconEl   = document.getElementById('class-icon');
+  const nameEl   = document.getElementById('class-name');
+  const flavorEl = document.getElementById('class-flavor');
+  if (iconEl)   iconEl.textContent = tier.icon;
+  if (nameEl)   { nameEl.textContent = tier.name.toUpperCase(); nameEl.style.color = tier.color; }
+  if (flavorEl) flavorEl.textContent = slx > 0 ? tier.flavor : 'Enter your flares to begin your conquest.';
+
+  // XP bar
+  const xpWrap = document.getElementById('xp-bar-wrap');
+  const xpFill = document.getElementById('xp-bar-fill');
+  const xpFrom = document.getElementById('xp-from-label');
+  const xpTo   = document.getElementById('xp-to-label');
+  if (slx > 0 && xpWrap) {
+    xpWrap.style.display = '';
+    xpFill.style.width   = xpPct + '%';
+    xpFill.style.background = `linear-gradient(90deg, ${tier.color}88, ${tier.color})`;
+    xpFill.style.boxShadow  = `0 0 8px ${tier.color}55`;
+    if (xpFrom) xpFrom.textContent = `${tier.icon} ${tier.name}`;
+    if (xpTo)   xpTo.textContent   = next ? `${next.icon} ${next.name} ${next.min.toLocaleString()} SLX` : '🎉 MAX';
+  } else if (xpWrap) xpWrap.style.display = 'none';
+
+  // Dominance ring
+  const domFill = document.getElementById('dom-fill');
+  if (domFill) {
+    const circumference = 2 * Math.PI * 40;
+    const capShare = Math.min(share, 0.05); // cap at 5% visually
+    domFill.style.strokeDashoffset = circumference * (1 - capShare / 0.05);
+    domFill.style.stroke = tier.color;
+  }
+
+  // Achievements
+  if (WALLET_CONTEXT || share > 0) unlock('ach-loaded');
+  if (slx >= 100)   unlock('ach-ember');
+  if (slx >= 2000)  unlock('ach-crystal');
+  if (slx >= 10000) unlock('ach-nova');
+  if (parseAmount(document.getElementById('calc-total').value||'0') >= 2e9) unlock('ach-whale');
+  if (share >= 0.01) unlock('ach-top1');
+
+  // Level-up toast + confetti
+  if (tieredUp) {
+    _currentTier = tier;
+    showLevelUp(`${tier.icon} ${tier.name.toUpperCase()} CLASS UNLOCKED!`);
+    confettiBurst();
+  } else if (!_currentTier || _currentTier === TIERS[0]) {
+    _currentTier = tier;
+  }
+}
+
+function unlock(id) {
+  document.getElementById(id)?.classList.add('unlocked');
+}
+
+// ── Level-up toast ────────────────────────────────────────────────────────────
+function showLevelUp(msg) {
+  const el = document.getElementById('levelup-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Confetti burst ────────────────────────────────────────────────────────────
+function confettiBurst() {
+  const colors = ['#7c6af7','#f472b6','#facc15','#67e8f9','#86efac','#fb923c'];
+  const cx = window.innerWidth / 2, cy = 100;
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-p';
+    const angle = (Math.random() * 240 - 120) * (Math.PI / 180);
+    const speed = Math.random() * 180 + 80;
+    el.style.cssText = `left:${cx}px;top:${cy}px;background:${colors[i%6]};--dx:${Math.sin(angle)*speed}px;--dy:${-Math.abs(Math.cos(angle))*speed}px;--rot:${Math.random()*360}deg;`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+}
+
+// ── Animated SLX number ──────────────────────────────────────────────────────
+let _prevSlx = 0;
+function animateSLX(toVal) {
+  const el = document.getElementById('calc-slx');
+  if (!el) return;
+  const fromVal = _prevSlx;
+  _prevSlx = toVal;
+  el.classList.remove('slx-pop');
+  void el.offsetWidth;
+  el.classList.add('slx-pop');
+  if (Math.abs(toVal - fromVal) < 1) { el.textContent = fmt(toVal)||'0'; return; }
+  const dur = 400, start = performance.now();
+  const tick = now => {
+    const t = Math.min((now - start) / dur, 1);
+    const e = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmt(Math.round(fromVal + (toVal - fromVal) * e)) || '0';
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// ── FDV slider ────────────────────────────────────────────────────────────────
+const FDV_SLIDE_VALS = [30, 50, 100, 150, 200, 300, 400, 500];
+let _fdvSlideIdx = 3;
+
+function onFdvSlide(el) {
+  _fdvSlideIdx = +el.value;
+  el.style.setProperty('--fdv-pct', (_fdvSlideIdx / 7 * 100) + '%');
+  syncFdvSlider();
+}
+
+function syncFdvSlider() {
+  const fdvM  = FDV_SLIDE_VALS[_fdvSlideIdx];
+  const price = (fdvM * 1e6) / SLX_TOTAL_SUPPLY;
+  const usd   = _prevSlx * price;
+  const usdEl = document.getElementById('fdv-slide-usd');
+  const subEl = document.getElementById('fdv-slide-sub');
+  const rarity= LOOT_RARITY[_fdvSlideIdx]?.label || '';
+  if (usdEl) usdEl.textContent = _prevSlx > 0 ? '$' + fmt(usd) : '$0';
+  if (subEl) subEl.textContent = `at $${fdvM}M FDV · $${price.toFixed(3)}/SLX · ${rarity}`;
+}
+
+// ── Live system counter ───────────────────────────────────────────────────────
+let _liveBase = 0, _liveRate = 0, _liveT0 = 0;
+function startLiveTicker(base, dailyRate) {
+  _liveBase = base; _liveRate = dailyRate; _liveT0 = Date.now();
+  setInterval(() => {
+    const el = document.getElementById('live-sys-num');
+    if (el) {
+      const elapsed = (Date.now() - _liveT0) / 1000;
+      el.textContent = fmt(Math.round(_liveBase + (_liveRate / 86400) * elapsed));
+    }
+  }, 200);
 }
 
 function renderResults() {
@@ -705,38 +1061,41 @@ function renderResults() {
   const slx        = share*SLX_TOTAL_SUPPLY*airdropPct;
   const boostNote  = yourMult!==avgMult ? ` × ${yourMult}/${avgMult}` : '';
 
-  // Hero
-  document.getElementById('calc-slx').textContent = fmt(slx)||'0';
-  document.getElementById('calc-you').textContent = userTotal > 0
-    ? `${fmt(userTotal)} flares${boostNote} · ${(share*100).toFixed(4)}% of network`
-    : 'Enter your flares on the left to see your estimate';
+  // Hero — animated SLX + game HUD
+  animateSLX(slx);
+  updateGameHUD(slx, share);
+  syncFdvSlider();
+  const miniEl = document.getElementById('calc-you-mini');
+  if (miniEl) miniEl.textContent = userTotal > 0 ? fmt(userTotal) + ' flares' : '';
 
   // Metrics
-  document.getElementById('calc-days').textContent  = days.toLocaleString('en-US');
-  document.getElementById('calc-share').textContent = (share*100).toFixed(4)+'%';
-  document.getElementById('sb-days').textContent    = days.toLocaleString('en-US');
-  document.getElementById('sb-share').textContent   = (share*100).toFixed(4)+'%';
-  document.getElementById('sb-slx').textContent     = fmt(slx)+' SLX';
+  document.getElementById('calc-days').textContent   = days.toLocaleString('en-US');
+  document.getElementById('calc-share').textContent  = (share*100).toFixed(4)+'%';
+  document.getElementById('calc-share-2').textContent= (share*100).toFixed(4)+'%';
+  document.getElementById('sb-days').textContent     = days.toLocaleString('en-US');
+  document.getElementById('sb-share').textContent    = (share*100).toFixed(4)+'%';
+  document.getElementById('sb-slx').textContent      = fmt(slx)+' SLX';
 
-  // $100M metric card
   const price100 = (100e6)/SLX_TOTAL_SUPPLY;
   document.getElementById('calc-usd-100m').textContent = '$'+fmt(slx*price100);
 
-  // FDV cards
+  // Loot cards with rarity
   const basis = (WALLET_CONTEXT&&WALLET_CONTEXT.cost_basis&&WALLET_CONTEXT.cost_basis.total)||0;
-  document.getElementById('calc-fdv-cards').innerHTML = FDV_SCENARIOS_M.map(fdvM => {
-    const price = (fdvM*1e6)/SLX_TOTAL_SUPPLY;
-    const usd   = slx*price;
+  document.getElementById('calc-fdv-cards').innerHTML = FDV_SCENARIOS_M.map((fdvM, idx) => {
+    const price  = (fdvM*1e6)/SLX_TOTAL_SUPPLY;
+    const usd    = slx*price;
+    const rarity = LOOT_RARITY[idx] || LOOT_RARITY[LOOT_RARITY.length-1];
     let roi = '';
     if (basis>0) {
       const x = usd/basis;
       const cls = x>=1?'pos':'neg';
-      roi = `<div class="c-roi ${cls}">${x.toFixed(2)}× vs cost</div>`;
+      roi = `<div class="loot-roi ${cls}">${x.toFixed(2)}× vs cost</div>`;
     }
-    return `<div class="fdv-card">
-      <div class="c-fdv">$${fdvM}M FDV</div>
-      <div class="c-price">$${price.toFixed(3)}/SLX</div>
-      <div class="c-usd">$${fmt(usd)}</div>
+    return `<div class="loot-card ${rarity.cls}">
+      <div class="loot-rarity">${rarity.label}</div>
+      <div class="loot-fdv">$${fdvM}M FDV</div>
+      <div class="loot-price">$${price.toFixed(3)}/SLX</div>
+      <div class="loot-usd">$${fmt(usd)}</div>
       ${roi}
     </div>`;
   }).join('');
@@ -1181,6 +1540,10 @@ function applyFallback() {
   initRpcUI();
   // Set initial YT price placeholder
   setYtPricePlaceholder(YT_MARKETS_LIST[0]);
+
+  // Start live system ticker after we know the daily rate
+  const { sysNow: sBase, avgD: sRate } = computeSystemTotalAtEnd(0);
+  if (sBase > 0) startLiveTicker(sBase, sRate > 0 ? sRate : 1_153_865_942);
 
   // Auto-fill wallet from ?wallet= URL param (linked from wallet dashboard)
   const walletParam = new URLSearchParams(location.search).get('wallet') || '';
