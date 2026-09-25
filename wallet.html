@@ -615,6 +615,19 @@ function getRpc() {
   const k = (localStorage.getItem('analytiq_rpc_key') || HELIUS_KEY).trim();
   return `https://mainnet.helius-rpc.com/?api-key=${k}`;
 }
+// The built-in Helius key is shared by every visitor and can hit its rate
+// limit; fall back to a public RPC that allows browser (CORS) requests.
+const PUBLIC_RPC = 'https://solana-rpc.publicnode.com';
+async function pickRpc() {
+  for (const url of [getRpc(), PUBLIC_RPC]) {
+    try {
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getSlot' }) });
+      if (r.ok && !(await r.json()).error) return url;
+    } catch {}
+  }
+  return null;
+}
 async function fetchOnChain(addr) {
   const rpc = getRpc();
   if (!rpc) return null;
@@ -1191,10 +1204,11 @@ async function loadDashboard(addr, forceRefresh = false) {
   // The Hanyon wallet index (s2.solstice.hanyon.app) only carries Season 2
   // totals, so Season 3 is always walked from chain back to the S3 start.
   setLoadingMsg('Reading on-chain…', 'This may take a minute');
-  const rpc = getRpc();
+  const rpc = await pickRpc();
   if (!rpc) {
-    setState('error', 'No RPC configured',
-      'Add a Helius RPC key in the Calculator sidebar to read this wallet from chain.');
+    setState('error', 'Solana RPC unavailable',
+      'Both the built-in Helius key and the public RPC failed to respond. ' +
+      'Try again in a minute, or add your own Helius key in the Calculator sidebar.');
     return;
   }
 
@@ -1218,7 +1232,7 @@ async function loadDashboard(addr, forceRefresh = false) {
       positions:     result.positions,
       totalDaily:    result.totalDaily,
       cachedTs:      result.cachedTs,
-      sourceLabel:   result.fromCache ? 'On-chain (cached)' : 'On-chain · Helius',
+      sourceLabel:   result.fromCache ? 'On-chain (cached)' : (rpc === PUBLIC_RPC ? 'On-chain · public RPC' : 'On-chain · Helius'),
       fromCache:     result.fromCache,
     };
 
