@@ -648,7 +648,7 @@ async function fetchOnChain(addr) {
 
 // ── On-chain historical walker ────────────────────────────────────────────────
 const SEASON_START_TS  = 1785542400;           // Aug 1 2026 00:00 UTC (Season 3 start)
-const OC_CACHE_PFX     = 'analytiq_oc_s3_v1_'; // S3: walk from 2026-08-01
+const OC_CACHE_PFX     = 'analytiq_oc_s3_v2_'; // S3: walk from 2026-08-01; v2: core-market YT
 const OC_CACHE_TTL     = 3600;                 // 1 hour
 const TOKEN_2022_PROG  = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 const EXPONENT_PROG    = 'ExponentnaRg3CQbW6dqQNZKXp7gtZ9DGMp1cwC4HAS7';
@@ -824,6 +824,45 @@ async function findStakeTimes(rpcUrl, pubkeys) {
   return stakeTs;
 }
 
+// Exponent position accounts point at a market account at offset 40. Older
+// markets pointed at a vault that stores mint_yt at offset 72; current "core"
+// markets (Sep26, Dec26) do not, so that lookup silently matched nothing.
+// Resolve each referenced account to a YT mint by: a known core-market map,
+// the legacy vault offset, then a byte scan for any known YT quest mint.
+const EXP_CORE_MARKET_YT_MINT = {
+  'CdUviheAUJaXUryT7JCRDUoNdPXdVvkxNQY1okC6uY8S': '47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', // USX-Sep26
+  'B78XAMSpB5KQqykw9oEec1nFSPeRqYtbTmsxo9EPwAUW': 'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', // eUSX-Sep26
+};
+async function resolveExponentYtMints(rpcUrl, keys, ytMints) {
+  const out = {};
+  const pending = [];
+  for (const k of keys) {
+    if (EXP_CORE_MARKET_YT_MINT[k]) out[k] = EXP_CORE_MARKET_YT_MINT[k];
+    else pending.push(k);
+  }
+  if (!pending.length) return out;
+  const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const targets = ytMints.map(m => ({ mint: m, bytes: b58Decode32(m) }));
+  const res = await rpcPost(rpcUrl, 'getMultipleAccounts', [pending, { encoding: 'base64' }]).catch(() => null);
+  pending.forEach((k, i) => {
+    const acc = res?.value?.[i];
+    if (!acc?.data) return;
+    const d = fromB64(acc.data[0]);
+    if (d.length >= 104) {
+      const legacy = b58Encode32(d.slice(72, 104));
+      if (ytMints.includes(legacy)) { out[k] = legacy; return; }
+    }
+    for (const t of targets) {
+      for (let off = 8; off + 32 <= d.length; off++) {
+        let hit = true;
+        for (let j = 0; j < 32; j++) if (d[off + j] !== t.bytes[j]) { hit = false; break; }
+        if (hit) { out[k] = t.mint; return; }
+      }
+    }
+  });
+  return out;
+}
+
 // ── Exponent Finance: scan staked YT positions (YieldTokenPosition) ───────────
 // Layout: disc[0-7] | owner[8-39] | vault[40-71] | yt_balance_u64[72-79]
 // Vault layout: disc[0-7] | ... | mint_yt[72-103]
@@ -862,22 +901,8 @@ async function fetchExponentYtFarmPositions(addr, rpcUrl, questList) {
 
   if (!decoded.length) return [];
 
-  // Batch-fetch vault accounts to read mint_yt at offset 72
-  const uniqueVaults = [...new Set(decoded.map(d => d.vault))];
-  const vaultRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
-    uniqueVaults, { encoding: 'base64' },
-  ]).catch(() => null);
-
-  const vaultToMintYt = {};
-  if (vaultRes?.value) {
-    uniqueVaults.forEach((v, i) => {
-      const acc = vaultRes.value[i];
-      if (acc?.data) {
-        const vd = fromB64(acc.data[0]);
-        if (vd.length >= 104) vaultToMintYt[v] = b58Encode32(vd.slice(72, 104));
-      }
-    });
-  }
+  const vaultToMintYt = await resolveExponentYtMints(
+    rpcUrl, [...new Set(decoded.map(d => d.vault))], Object.keys(mintYtToQuest));
 
   // For each position, find the stake start time via the first signature on the
   // YieldTokenPosition account. This avoids over-counting flares when the user
@@ -904,7 +929,7 @@ async function fetchExponentYtFarmPositions(addr, rpcUrl, questList) {
       type:      quest.type,
       mult:      quest.mult,
       matTs:     quest.matTs,
-      daily:     balance * quest.mult,
+      daily:     (quest.matTs && quest.matTs <= nowTs) ? 0 : balance * quest.mult,
       balance,
       balSource: 'on-chain',
       flares:    balance * quest.mult * days,
@@ -962,39 +987,28 @@ async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
 
   if (!decoded.length) return [];
 
-  // Read each market account to find vault pubkey (offset 104 in MarketTwo)
+  // Resolve market → YT mint directly (core markets), else fall back to the
+  // legacy MarketTwo path: vault at offset 104, then mint_yt in the vault.
   const uniqueMarkets = [...new Set(decoded.map(d => d.market))];
-  const marketRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
-    uniqueMarkets, { encoding: 'base64' },
-  ]).catch(() => null);
-
-  const marketToVault = {};
-  if (marketRes?.value) {
-    uniqueMarkets.forEach((m, i) => {
-      const acc = marketRes.value[i];
+  const marketToMintYt = await resolveExponentYtMints(rpcUrl, uniqueMarkets, Object.keys(ytToLp));
+  const legacyMarkets = uniqueMarkets.filter(m => !marketToMintYt[m]);
+  if (legacyMarkets.length) {
+    const marketRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
+      legacyMarkets, { encoding: 'base64' },
+    ]).catch(() => null);
+    const marketToVault = {};
+    legacyMarkets.forEach((m, i) => {
+      const acc = marketRes?.value?.[i];
       if (acc?.data) {
         const md = fromB64(acc.data[0]);
         if (md.length >= 136) marketToVault[m] = b58Encode32(md.slice(104, 136));
       }
     });
-  }
-
-  // Read vault accounts to get mint_yt
-  const uniqueVaults = [...new Set(Object.values(marketToVault))];
-  if (!uniqueVaults.length) return [];
-  const vaultRes = await rpcPost(rpcUrl, 'getMultipleAccounts', [
-    uniqueVaults, { encoding: 'base64' },
-  ]).catch(() => null);
-
-  const vaultToMintYt = {};
-  if (vaultRes?.value) {
-    uniqueVaults.forEach((v, i) => {
-      const acc = vaultRes.value[i];
-      if (acc?.data) {
-        const vd = fromB64(acc.data[0]);
-        if (vd.length >= 104) vaultToMintYt[v] = b58Encode32(vd.slice(72, 104));
-      }
-    });
+    const vaultMints = await resolveExponentYtMints(
+      rpcUrl, [...new Set(Object.values(marketToVault))], Object.keys(ytToLp));
+    for (const [m, v] of Object.entries(marketToVault)) {
+      if (vaultMints[v]) marketToMintYt[m] = vaultMints[v];
+    }
   }
 
   const stakeTs = await findStakeTimes(rpcUrl, decoded.map(d => d.pubkey));
@@ -1003,9 +1017,7 @@ async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
   const nowTs = Math.floor(Date.now() / 1000);
 
   for (const { pubkey, market, lpBalance } of decoded) {
-    const vault  = marketToVault[market];
-    if (!vault) continue;
-    const mintYt = vaultToMintYt[vault];
+    const mintYt = marketToMintYt[market];
     if (!mintYt) continue;
     const lpQuestCode = ytToLp[mintYt];
     if (!lpQuestCode) continue;
@@ -1023,7 +1035,7 @@ async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
       type:      quest.type,
       mult:      quest.mult,
       matTs:     quest.matTs,
-      daily:     balance * quest.mult,
+      daily:     (quest.matTs && quest.matTs <= nowTs) ? 0 : balance * quest.mult,
       balance,
       balSource: 'on-chain',
       flares:    balance * quest.mult * days,
@@ -1130,7 +1142,7 @@ async function computeOnChainFlares(addr, rpcUrl, questList) {
       flares = balance * quest.mult * daysSinceStart;
     }
 
-    const daily = balance * quest.mult;
+    const daily = (quest.matTs && quest.matTs <= nowTs) ? 0 : balance * quest.mult;
     totalFlares += flares;
     totalDaily  += daily;
     positions.push({
@@ -1164,6 +1176,11 @@ async function computeOnChainFlares(addr, rpcUrl, questList) {
     }
   } catch(e) { console.warn('Exponent LP farm scan failed:', e); }
 
+  // Drop leftovers that neither hold a balance nor earned anything (e.g. a YT
+  // token account emptied by staking it into the Exponent farm).
+  for (let i = positions.length - 1; i >= 0; i--) {
+    if (!(positions[i].balance > 0) && !(positions[i].flares > 0)) positions.splice(i, 1);
+  }
   if (!positions.length) return { totalFlares: 0, totalDaily: 0, positions: [], cachedTs: null, fromCache: false };
 
   positions.sort((a, b) => b.daily - a.daily);
@@ -1179,6 +1196,7 @@ function clearOcCache(addr) {
   // Clear current and any legacy cache keys
   try {
     localStorage.removeItem(OC_CACHE_PFX + addr);
+    localStorage.removeItem('analytiq_oc_s3_v1_' + addr);
     localStorage.removeItem('analytiq_oc_v4_' + addr);
     localStorage.removeItem('analytiq_oc_v3_' + addr);
     localStorage.removeItem('analytiq_oc_v2_' + addr);
@@ -1248,13 +1266,43 @@ async function loadDashboard(addr, forceRefresh = false) {
 function rerender() { if (walletState) render(); }
 
 // ── Render all ────────────────────────────────────────────────────────────────
+// ── Official flares override ──────────────────────────────────────────────────
+// Only Solstice knows a wallet's exact total (staked YT history can't be rebuilt
+// from chain, and some quests aren't read here). A total pasted from the app is
+// stored per wallet and advanced by the on-chain daily rate at each midnight UTC.
+const OFFICIAL_PFX = 'analytiq_official_s3_';
+function getOfficial(addr) {
+  try { return JSON.parse(localStorage.getItem(OFFICIAL_PFX + addr) || 'null'); } catch { return null; }
+}
+function officialFlaresNow(addr, totalDaily) {
+  const o = getOfficial(addr);
+  if (!o || !(o.value > 0)) return null;
+  const days = Math.max(0, Math.round((new Date(utcDate() + 'T00:00:00Z') - new Date(o.date + 'T00:00:00Z')) / 86400000));
+  return { value: o.value + totalDaily * days, date: o.date, days };
+}
+function effectiveFlares() {
+  const o = officialFlaresNow(walletState.addr, walletState.totalDaily);
+  return o ? o.value : walletState.currentFlares;
+}
+function saveOfficial(addr) {
+  const raw = (document.getElementById('official-input')?.value || '').replace(/[^0-9.]/g, '');
+  const v = parseFloat(raw);
+  try {
+    if (v > 0) localStorage.setItem(OFFICIAL_PFX + addr, JSON.stringify({ value: v, date: utcDate() }));
+    else localStorage.removeItem(OFFICIAL_PFX + addr);
+  } catch {}
+  render();
+}
+
 function render() {
-  const { addr, currentFlares, loyaltyMult, positions, totalDaily, sourceLabel } = walletState;
+  const { addr, loyaltyMult, positions, totalDaily, sourceLabel } = walletState;
+  const official = officialFlaresNow(addr, totalDaily);
+  const currentFlares = official ? official.value : walletState.currentFlares;
   const yourMult = parseFloat(document.getElementById('proj-your-mult').value) || loyaltyMult;
   const avgMult  = parseFloat(document.getElementById('proj-avg-mult').value)  || 1.3;
   const multRatio = avgMult > 0 ? yourMult / avgMult : 1;
 
-  renderHero(addr, currentFlares, loyaltyMult, totalDaily);
+  renderHero(addr, currentFlares, loyaltyMult, totalDaily, official);
   renderStats(currentFlares, positions, totalDaily, multRatio);
   renderPositions(positions, totalDaily, sourceLabel);
   renderProjections(currentFlares, positions, totalDaily, multRatio);
@@ -1264,7 +1312,7 @@ function render() {
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
-function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
+function renderHero(addr, currentFlares, loyaltyMult, totalDaily, official) {
   const { sourceLabel, fromCache, cachedTs } = walletState;
   const multCls    = loyaltyMult >= 1.4 ? 'badge-green' : loyaltyMult >= 1.2 ? 'badge-orange' : 'badge-muted';
   const isOnChain  = sourceLabel.includes('Helius') || sourceLabel.includes('On-chain');
@@ -1315,7 +1363,7 @@ function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
       </div>
     </div>
     <div class="hero-bottom">
-      <div class="hero-eyebrow">${isOnChain ? 'Accumulated flares (computed on-chain)' : 'Total accumulated flares'}</div>
+      <div class="hero-eyebrow">${official ? 'Accumulated flares (your Solstice total)' : 'Accumulated flares (estimated on-chain)'}</div>
       <div class="hero-num">${fmtShort(currentFlares)}<span class="hero-num-unit">flares</span></div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;">
         <div class="hero-sub" style="margin-top:0">${fmt(currentFlares)} · Solstice Season 3 · ${utcDate()}</div>
@@ -1337,6 +1385,16 @@ function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
           const label = hAgo > 0 ? `${hAgo}h ${mAgo}m ago` : `${mAgo}m ago`;
           return `<span style="font-size:11px;color:var(--text-3);">⏱ last accrual ${label} (midnight UTC daily)</span>`;
         })()}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--text-3);">
+        ${official
+          ? `Using your Solstice total from ${official.date}${official.days ? ` + ${official.days}d × on-chain rate` : ''} · on-chain estimate was ${fmtShort(walletState.currentFlares)}`
+          : `On-chain estimate — staked Exponent YT history and some quests can't be rebuilt from chain. For the exact number, paste “My Flares” from the Solstice app:`}
+        <input id="official-input" type="text" inputmode="numeric" placeholder="e.g. 211,105,317"
+          value="${official ? fmt(getOfficial(addr).value) : ''}"
+          onkeydown="if(event.key==='Enter') saveOfficial('${addr}')"
+          style="background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.15);color:white;border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;width:150px;">
+        <button class="oc-refresh-btn" onclick="saveOfficial('${addr}')">${official ? 'Update' : 'Use my total'}</button>
       </div>
     </div>
   `;
@@ -1380,7 +1438,7 @@ function renderStats(currentFlares, positions, totalDaily, multRatio) {
     <div class="stat-card">
       <div class="stat-label">Days remaining</div>
       <div class="stat-val">${daysLeft}</div>
-      <div class="stat-sub">until Aug 1, 2026</div>
+      <div class="stat-sub">until Dec 1, 2026</div>
     </div>
   `;
 }
@@ -1499,7 +1557,8 @@ function renderCountdown() {
 
   let paceHtml = '';
   if (walletState) {
-    const { totalDaily, currentFlares } = walletState;
+    const { totalDaily } = walletState;
+    const currentFlares = effectiveFlares();
     // pace = user's daily share vs current share — are they growing or shrinking?
     const userShareNow   = sysNow   > 0 ? currentFlares / sysNow   : 0;
     const userShareDaily = sysDaily > 0 ? totalDaily    / sysDaily  : 0;
@@ -1537,7 +1596,8 @@ function closeShareModal(e) {
 }
 function renderShareCardContent() {
   if (!walletState) return;
-  const { addr, currentFlares, loyaltyMult, positions, totalDaily } = walletState;
+  const { addr, loyaltyMult, positions, totalDaily } = walletState;
+  const currentFlares = effectiveFlares();
   const yourMult  = parseFloat(document.getElementById('proj-your-mult').value) || loyaltyMult;
   const avgMult   = parseFloat(document.getElementById('proj-avg-mult').value)  || 1.3;
   const multRatio = avgMult > 0 ? yourMult / avgMult : 1;
@@ -1686,7 +1746,8 @@ function renderOptimizer() {
   const sec  = document.getElementById('opt-section');
   const grid = document.getElementById('opt-grid');
   if (!walletState || !sec || !grid) return;
-  const { positions, currentFlares, loyaltyMult } = walletState;
+  const { positions, loyaltyMult } = walletState;
+  const currentFlares = effectiveFlares();
   if (!positions.length) { sec.style.display='none'; return; }
 
   const yourMult  = parseFloat(document.getElementById('proj-your-mult').value) || loyaltyMult;
