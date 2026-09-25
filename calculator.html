@@ -508,6 +508,12 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
         <button class="preset-btn" onclick="fillPreset(10e9)">🏆 10B</button>
       </div>
       <div class="s-field">
+        <label class="s-label" for="calc-current">Your S3 flares now</label>
+        <input id="calc-current" type="text" class="s-input" value="" inputmode="decimal" placeholder="“My Flares” on app.solstice.finance"
+          oninput="onCurrentFlaresInput()" onblur="onAmountBlur(this)" onfocus="onAmountFocus(this)">
+        <div class="s-hint">Copy it from the Solstice app. The daily rate from Load Wallet is projected on top.</div>
+      </div>
+      <div class="s-field">
         <label class="s-label" for="calc-total">Your flares at end date</label>
         <input id="calc-total" type="text" class="s-input" value="0" inputmode="decimal" placeholder="e.g. 5M or 5,000,000"
           oninput="onAmountInput(this)" onblur="onAmountBlur(this)" onfocus="onAmountFocus(this)">
@@ -823,6 +829,20 @@ function onEndDateChange() {
   onAnyInput();
 }
 
+// Official current flares typed by the user override the on-chain estimate.
+function currentFlaresInput() {
+  const n = parseAmount(document.getElementById('calc-current').value);
+  return isFinite(n) && n > 0 ? n : null;
+}
+
+function onCurrentFlaresInput() {
+  const cur = currentFlaresInput();
+  if (!WALLET_CONTEXT) WALLET_CONTEXT = { current_flares: 0, yt_daily: 0, nonyt_daily: 0 };
+  WALLET_CONTEXT.current_flares = cur || 0;
+  refreshUserProjection();
+  onAnyInput();
+}
+
 function refreshUserProjection() {
   if (!WALLET_CONTEXT) return;
   const endIso = document.getElementById('calc-end').value||SEASON_END_ISO;
@@ -836,8 +856,10 @@ function refreshUserProjection() {
   const projected = w.current_flares + w.yt_daily*ytDays + w.nonyt_daily*days;
   document.getElementById('calc-total').value = fmt(projected);
   const ytNote = w.yt_daily>0 ? ` · YT capped at ${daysToMat.toFixed(1)}d` : '';
-  document.getElementById('calc-prefill-hint').textContent =
-    `Pre-filled: ${fmt(w.current_flares)} today + ${fmt(projected-w.current_flares)} projected${ytNote}`;
+  const hint = (w.yt_daily + w.nonyt_daily) > 0
+    ? `${fmt(w.current_flares)} now + ${fmt(projected-w.current_flares)} projected${ytNote}`
+    : `${fmt(w.current_flares)} now · load your wallet (or edit this field) to add future flares`;
+  document.getElementById('calc-prefill-hint').textContent = hint;
 }
 
 function onAnyInput() { renderResults(); }
@@ -1146,6 +1168,10 @@ async function fetchQuests() {
       for (const q of quests.filter(q2=>q2.mint&&q2.isActive&&q2.type==='LIQUIDITY_POSITION')) {
         if (!seen[q.mint]) deduped.push({code:q.questCode,label:q.name,mult:q.multiplier,mint:q.mint,type:'LP'});
       }
+      // Keep verified fallback mints the API omitted (or labelled differently)
+      for (const q of QUEST_FALLBACK) {
+        if (!deduped.some(d => d.mint === q.mint)) deduped.push(q);
+      }
       localStorage.setItem(QUEST_CACHE_KEY, JSON.stringify({date:utcDateStr(), quests:deduped}));
       return deduped;
     }
@@ -1183,33 +1209,47 @@ function initRpcUI() {
   if (custom) document.getElementById('rpc-key-input').value = custom;
 }
 
-async function readWalletOnChain(address) {
-  const rpc = getRpcEndpoint();
-  if (!rpc) throw new Error('no_rpc_key');
-  const quests = await fetchQuests();
-  const mintMap = {};
-  for (const q of quests) mintMap[q.mint] = q;
+// Built-in Helius key is shared by every visitor and can hit its rate limit, so
+// fall back to a public RPC that allows browser (CORS) requests.
+const PUBLIC_RPC = 'https://solana-rpc.publicnode.com';
+const TOKEN_2022_PROGRAM = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 
+async function rpcCall(rpc, method, params) {
   const res = await fetch(rpc, {
     method: 'POST',
     headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify({
-      jsonrpc:'2.0', id:1,
-      method:'getTokenAccountsByOwner',
-      params: [address,
-        { programId: SPL_TOKEN_PROGRAM },
-        { encoding: 'jsonParsed' }
-      ]
-    })
+    body: JSON.stringify({ jsonrpc:'2.0', id:1, method, params }),
   });
-
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error('RPC: ' + data.error.message);
+  if (data.error) throw new Error(data.error.message);
+  return data.result;
+}
+
+async function readWalletOnChain(address) {
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) throw new Error('Not a valid Solana address');
+  const quests = await fetchQuests();
+  const mintMap = {};
+  for (const q of quests) if (q.mint) mintMap[q.mint] = q;
+
+  let accounts = null, lastErr = null;
+  for (const rpc of [getRpcEndpoint(), PUBLIC_RPC]) {
+    try {
+      const [spl, t22] = await Promise.all([
+        rpcCall(rpc, 'getTokenAccountsByOwner', [address, { programId: SPL_TOKEN_PROGRAM }, { encoding: 'jsonParsed' }]),
+        rpcCall(rpc, 'getTokenAccountsByOwner', [address, { programId: TOKEN_2022_PROGRAM }, { encoding: 'jsonParsed' }])
+          .catch(() => ({ value: [] })),
+      ]);
+      accounts = [...(spl?.value || []), ...(t22?.value || [])];
+      break;
+    } catch (e) { lastErr = e; }
+  }
+  if (!accounts) throw new Error('RPC unavailable (' + (lastErr?.message || 'unknown') + ')');
 
   let dailyTotal = 0;
   const breakdown = [];
 
-  for (const acc of data.result.value) {
+  for (const acc of accounts) {
     const info  = acc.account.data.parsed.info;
     const mint  = info.mint;
     const bal   = info.tokenAmount.uiAmount || 0;
@@ -1266,41 +1306,34 @@ async function calcLoadWallet() {
   // totals, so S3 reads live balances and projects forward from today. The
   // full dashboard walks balance history back to the S3 start for the total.
   srcEl.textContent = 'Reading on-chain…';
-  if (getRpcEndpoint()) {
-    try {
-      const { dailyTotal, breakdown } = await readWalletOnChain(raw);
+  const dashLink = `<a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
+  let result = null, err = null;
+  try { result = await readWalletOnChain(raw); } catch (e) { err = e; }
+  btn.textContent='Load Wallet'; btn.disabled=false;
 
-      if (breakdown.length === 0) {
-        srcEl.textContent = 'No S3 positions found — enter flares manually.';
-      } else {
-        const endIso = document.getElementById('calc-end').value || SEASON_END_ISO;
-        const today  = new Date(); today.setUTCHours(0,0,0,0);
-        const end    = new Date(endIso + 'T00:00:00Z');
-        const days   = Math.max(0, Math.round((end - today) / 86400000));
-
-        const ytDaily    = breakdown.filter(b=>b.type==='YT').reduce((s,b)=>s+b.daily,0);
-        const nonytDaily = breakdown.filter(b=>b.type!=='YT').reduce((s,b)=>s+b.daily,0);
-        const daysToMat  = Math.max(0, (YT_MATURITY_TS - Math.floor(today/1000)) / 86400);
-        const projected  = ytDaily * Math.min(days, daysToMat) + nonytDaily * days;
-
-        WALLET_CONTEXT = { current_flares: 0, yt_daily: ytDaily, nonyt_daily: nonytDaily };
-        document.getElementById('calc-total').value = fmt(projected);
-        document.getElementById('calc-prefill-hint').textContent =
-          `${fmt(dailyTotal)}/day × ${days}d projected — add your current S3 flares (see Full Dashboard or the Solstice app)`;
-        showBreakdown(dailyTotal, breakdown);
-        srcEl.innerHTML = `${breakdown.length} position${breakdown.length!==1?'s':''} found on-chain · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
-        renderResults();
-        btn.textContent='Load Wallet'; btn.disabled=false;
-        return;
-      }
-    } catch(_) {}
+  if (err) {
+    errEl.textContent = `Could not read wallet: ${err.message}. Enter your flares from the Solstice app below.`;
+    errEl.style.display = 'block';
+    srcEl.textContent = '';
+    return;
   }
 
-  WALLET_CONTEXT = null;
-  errEl.innerHTML = 'Could not read this wallet on-chain — enter flares manually above.';
-  errEl.style.display = 'block';
-  srcEl.textContent = '';
-  btn.textContent='Load Wallet'; btn.disabled=false;
+  const { dailyTotal, breakdown } = result;
+  const ytDaily    = breakdown.filter(b=>b.type==='YT').reduce((s,b)=>s+b.daily,0);
+  const nonytDaily = breakdown.filter(b=>b.type!=='YT').reduce((s,b)=>s+b.daily,0);
+  WALLET_CONTEXT = { current_flares: currentFlaresInput() || 0, yt_daily: ytDaily, nonyt_daily: nonytDaily };
+
+  if (breakdown.length === 0) {
+    srcEl.innerHTML = `No wallet-held S3 tokens found. Staked positions (Exponent farm, Kamino, Orca, Raydium) aren't read here — enter your flares below, or try the ${dashLink}.`;
+  } else {
+    showBreakdown(dailyTotal, breakdown);
+    srcEl.innerHTML = `${breakdown.length} position${breakdown.length!==1?'s':''} found on-chain · ${dashLink}`;
+  }
+  if (!currentFlaresInput()) {
+    document.getElementById('calc-current').focus();
+  }
+  refreshUserProjection();
+  renderResults();
 }
 
 // ── YT Projector ─────────────────────────────────────────────────────────────
