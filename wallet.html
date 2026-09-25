@@ -648,7 +648,7 @@ async function fetchOnChain(addr) {
 
 // ── On-chain historical walker ────────────────────────────────────────────────
 const SEASON_START_TS  = 1785542400;           // Aug 1 2026 00:00 UTC (Season 3 start)
-const OC_CACHE_PFX     = 'analytiq_oc_s3_v2_'; // S3: walk from 2026-08-01; v2: core-market YT
+const OC_CACHE_PFX     = 'analytiq_oc_s3_v3_'; // S3: walk from 2026-08-01; v3: two-hop YT market resolve
 const OC_CACHE_TTL     = 3600;                 // 1 hour
 const TOKEN_2022_PROG  = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 const EXPONENT_PROG    = 'ExponentnaRg3CQbW6dqQNZKXp7gtZ9DGMp1cwC4HAS7';
@@ -844,22 +844,49 @@ async function resolveExponentYtMints(rpcUrl, keys, ytMints) {
   const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
   const targets = ytMints.map(m => ({ mint: m, bytes: b58Decode32(m) }));
   const res = await rpcPost(rpcUrl, 'getMultipleAccounts', [pending, { encoding: 'base64' }]).catch(() => null);
-  pending.forEach((k, i) => {
-    const acc = res?.value?.[i];
-    if (!acc?.data) return;
-    const d = fromB64(acc.data[0]);
+  const scan = d => {
     if (d.length >= 104) {
       const legacy = b58Encode32(d.slice(72, 104));
-      if (ytMints.includes(legacy)) { out[k] = legacy; return; }
+      if (ytMints.includes(legacy)) return legacy;
     }
     for (const t of targets) {
       for (let off = 8; off + 32 <= d.length; off++) {
         let hit = true;
         for (let j = 0; j < 32; j++) if (d[off + j] !== t.bytes[j]) { hit = false; break; }
-        if (hit) { out[k] = t.mint; return; }
+        if (hit) return t.mint;
       }
     }
+    return null;
+  };
+  const unresolved = {};
+  pending.forEach((k, i) => {
+    const acc = res?.value?.[i];
+    if (!acc?.data) return;
+    const d = fromB64(acc.data[0]);
+    const m = scan(d);
+    if (m) out[k] = m; else unresolved[k] = d;
   });
+
+  // Second hop: the market may only reference its vault, which holds mint_yt.
+  // Try every 32-byte window of the market as a pubkey and keep the ones that
+  // are Exponent-owned accounts.
+  for (const [k, d] of Object.entries(unresolved)) {
+    const cands = [];
+    for (let off = 8; off + 32 <= d.length && cands.length < 400; off++) {
+      const pk = d.slice(off, off + 32);
+      if (pk.every(b => b === 0)) continue;
+      cands.push(b58Encode32(pk));
+    }
+    for (let i = 0; i < cands.length && !out[k]; i += 100) {
+      const batch = cands.slice(i, i + 100);
+      const r = await rpcPost(rpcUrl, 'getMultipleAccounts', [batch, { encoding: 'base64' }]).catch(() => null);
+      (r?.value || []).forEach(acc => {
+        if (out[k] || !acc?.data || acc.owner !== EXPONENT_PROG) return;
+        const m = scan(fromB64(acc.data[0]));
+        if (m) out[k] = m;
+      });
+    }
+  }
   return out;
 }
 
@@ -1196,6 +1223,7 @@ function clearOcCache(addr) {
   // Clear current and any legacy cache keys
   try {
     localStorage.removeItem(OC_CACHE_PFX + addr);
+    localStorage.removeItem('analytiq_oc_s3_v2_' + addr);
     localStorage.removeItem('analytiq_oc_s3_v1_' + addr);
     localStorage.removeItem('analytiq_oc_v4_' + addr);
     localStorage.removeItem('analytiq_oc_v3_' + addr);
@@ -1458,11 +1486,14 @@ function renderPositions(positions, totalDaily, sourceLabel) {
     const pct    = totalDaily > 0 ? p.daily / totalDaily * 100 : 0;
     const typCls = p.type==='YT' ? 'type-yt' : p.type==='LP' ? 'type-lp' : p.type==='HOLD' ? 'type-hold' : 'type-unk';
     const balStr = p.balance != null ? fmtShort(p.balance) : '—';
-    const matNote = (p.type==='YT' && p.matTs) ? `matures ${daysUntilTs(p.matTs).toFixed(0)}d` : '';
-    return `<tr>
+    const matured = p.matTs && p.matTs <= Date.now() / 1000;
+    const matNote = !p.matTs ? ''
+      : matured ? `matured ${new Date(p.matTs * 1000).toISOString().slice(0,10)} — no longer earning (flares earned before then still count)`
+      : `matures in ${daysUntilTs(p.matTs).toFixed(0)}d`;
+    return `<tr${matured ? ' style="opacity:.55"' : ''}>
       <td>
         <span class="type-badge ${typCls}">${p.type}</span><span class="pos-name">${p.label}</span>
-        ${matNote ? `<div class="pos-detail">${matNote} remaining</div>` : ''}
+        ${matNote ? `<div class="pos-detail">${matNote}</div>` : ''}
       </td>
       <td>
         <div class="pos-bal">${balStr}</div>
@@ -1477,8 +1508,10 @@ function renderPositions(positions, totalDaily, sourceLabel) {
     </tr>`;
   }).join('');
 
+  const nMatured = positions.filter(p => p.matTs && p.matTs <= Date.now() / 1000).length;
+  const nActive  = positions.length - nMatured;
   document.getElementById('pos-footer').innerHTML = `
-    <div><strong>${fmt(totalDaily)}</strong> flares/day total · ${positions.length} active position${positions.length!==1?'s':''}</div>
+    <div><strong>${fmt(totalDaily)}</strong> flares/day total · ${nActive} earning${nMatured ? ` · ${nMatured} matured` : ''}</div>
     <div style="color:var(--text-4);font-size:10px;">LP/lend/borrow may require protocol-level indexing</div>
   `;
 }
