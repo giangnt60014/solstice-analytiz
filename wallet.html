@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Solstice S2 Calculator – Wallet Dashboard</title>
+<title>Solstice S3 Calculator – Wallet Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
@@ -281,7 +281,7 @@ body { min-height: 100vh; }
   <a class="header-brand" href="calculator.html">
     <img src="favicon.svg" width="22" height="22" alt="" style="border-radius:5px;">
     Solstice
-    <span class="header-badge">S2</span>
+    <span class="header-badge">S3</span>
   </a>
   <nav class="header-nav">
     <a href="calculator.html">Calculator</a>
@@ -312,7 +312,7 @@ body { min-height: 100vh; }
     <div class="state-icon">📊</div>
     <div class="state-title">Wallet farming dashboard</div>
     <div class="state-body">
-      Paste any Solana wallet address to see a full breakdown of its S2 farming — active positions, daily emission rates, projected flares, and SLX estimates at season end.
+      Paste any Solana wallet address to see a full breakdown of its Season 3 farming — active positions, daily emission rates, projected flares, and SLX estimates at season end.
     </div>
   </div>
 
@@ -370,7 +370,6 @@ body { min-height: 100vh; }
             <select class="proj-select" id="proj-your-mult" onchange="rerender()">
               <option value="1.4">1.4× loyalty</option>
               <option value="1.3">1.3× loyalty</option>
-              <option value="1.2">1.2× loyalty</option>
               <option value="1.0">1.0× loyalty</option>
             </select>
             <select class="proj-select" id="proj-avg-mult" onchange="rerender()">
@@ -414,14 +413,16 @@ body { min-height: 100vh; }
     <div class="meth-box">
       <strong>Balance estimates:</strong> When no Helius RPC key is configured, token balances are back-calculated as <em>daily_emission ÷ multiplier</em>. Configure a free Helius key in the <a href="calculator.html" style="color:var(--orange)">Calculator</a> sidebar to enable direct on-chain reads.
       <br><br>
-      <strong>Projections:</strong> YT positions are capped at Exponent maturity (Jun 2026 / Sep 2026). Non-YT positions (HOLD, LP) earn linearly until season end. System total projected from Solstice live API + 7-day average daily rate.
+      <strong>Season 3 flares:</strong> Walked on-chain from each position's balance history since the S3 start (2026-08-01 00:00 UTC). Exponent Sep26 positions count until their 2026-09-16 maturity; Dec26 positions run to the 2026-12-01 season end.
       <br><br>
-      <strong>LP / lend / borrow:</strong> Protocol-internal positions (Kamino lending, Loopscale borrow, Exponent YT via event-walked accounts) may not appear if not indexed by Hanyon. Totals sourced from the analytics index are authoritative.
+      <strong>Projections:</strong> YT positions are capped at Exponent maturity (Dec26 matures with season end). Non-YT positions (HOLD, LP) earn linearly until season end. System total projected from Solstice live API + recent daily rate.
+      <br><br>
+      <strong>Not included:</strong> Kamino lend/borrow, Loopscale, Orca/Raydium CLMM positions and the time-locked 1MO/3MO hold bonuses (ended 2026-09-15). Multipliers use the current quest catalog, so boosts changed mid-season (e.g. kVault 10×→20× on 2026-09-17) are applied to the whole period. Check the Solstice app for your official total.
       <div class="meth-tags">
-        <span class="meth-tag">Data: Hanyon analytics index</span>
+        <span class="meth-tag">Data: Solana on-chain · Helius</span>
         <span class="meth-tag">System: Solstice official API</span>
         <span class="meth-tag">1B SLX total supply</span>
-        <span class="meth-tag">Season end 2026-08-01</span>
+        <span class="meth-tag">Season end 2026-12-01</span>
       </div>
     </div>
 
@@ -464,28 +465,33 @@ body { min-height: 100vh; }
 const SLX_SUPPLY    = 1_000_000_000;
 const AIRDROP_PCT   = 0.03;
 const FDV_M         = [30, 50, 100, 150, 200, 300, 400, 500];
-const SEASON_END    = '2026-08-01';
-const YT_MAT_TS     = 1780318699; // ~Jun 30 2026 Exponent maturity
-const YT_MAT_TS_SEP = 1790956800; // ~Sep 30 2026 (approx)
+const SEASON_END    = '2026-12-01';
+const SEASON_END_TS = 1796083200; // 2026-12-01 00:00 UTC
+const YT_MAT_TS_SEP = 1789552700; // 2026-09-16 09:58:20 UTC — Exponent Sep26 maturity
+const YT_MAT_TS_DEC = SEASON_END_TS; // Exponent Dec26 (usx-01DEC26) matures with S3 end
 
 const YT_CODES = new Set([
-  'S2_EXPONENT_YIELD_USX_JUN26','S2_EXPONENT_YIELD_EUSX_JUN26',
+  'S2_EXPONENT_YIELD_USX_DEC26','S2_EXPONENT_YIELD_EUSX_DEC26',
   'S2_EXPONENT_YIELD_USX_SEP26','S2_EXPONENT_YIELD_EUSX_SEP26',
 ]);
 
+// Season 3 quest catalog (app.solstice.finance/api/flares/quests, 2026-09-25).
+// Solstice kept the S2_ prefix on quests carried into S3. Sep26 entries ended
+// at maturity but still earned S3 flares from 2026-08-01 to 2026-09-16. Dec26
+// YT mints come from the live API; Exponent LP quests are matched through the
+// market's YT mint, so they need no LP mint.
 const QUEST_FALLBACK = [
-  { code:'S2_EXPONENT_YIELD_USX_JUN26',  label:'Farm Variable USX Yield (Exponent 1Jun26)',    mult:30, mint:'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s', type:'YT',   matTs: YT_MAT_TS },
-  { code:'S2_EXPONENT_YIELD_EUSX_JUN26', label:'Farm Variable eUSX Yield (Exponent 1Jun26)',   mult:15, mint:'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw', type:'YT',   matTs: YT_MAT_TS },
-  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'Farm Variable USX Yield (Exponent 16Sep26)',   mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT',   matTs: YT_MAT_TS_SEP },
-  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'Farm Variable eUSX Yield (Exponent 16Sep26)',  mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT',   matTs: YT_MAT_TS_SEP },
-  { code:'S2_HOLD_USX_DAILY',            label:'Hold USX',      mult:10, mint:'6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG', type:'HOLD', matTs: null },
-  { code:'S2_HOLD_EUSX_DAILY',           label:'Hold eUSX',     mult:2,  mint:'3ThdFZQKM6kRyVGLG48kaPg5TRMhYMKY1iCRa9xop1WC', type:'HOLD', matTs: null },
-  { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault', mult:10, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP',   matTs: null },
-  // Exponent LP quests — Solstice API returns mint=null; we patch LP mint addresses here
-  { code:'S2_EXPONENT_LP_USX_JUN26',     label:'Supply USX Liquidity (Exponent 1Jun26)',       mult:20, mint:'BR2JKV9gPoJfX8A8DkFmo2yNQKCeGipg33oYaZ4EmjbW', type:'LP', matTs: YT_MAT_TS },
-  { code:'S2_EXPONENT_LP_EUSX_JUN26',    label:'Supply eUSX Liquidity (Exponent 1Jun26)',      mult:10, mint:'4GT6g1iKx2TyYCkwt1tERkReQjSUuVE7uh14M5W8v2nn',  type:'LP', matTs: YT_MAT_TS },
-  { code:'S2_EXPONENT_LP_USX_SEP26',     label:'Supply USX Liquidity (Exponent 16Sep26)',      mult:20, mint:'UPvchSL3aVFwaqVEQKJ3msSLfhKJe468DBPJYgWLNw5',   type:'LP', matTs: YT_MAT_TS_SEP },
-  { code:'S2_EXPONENT_LP_EUSX_SEP26',    label:'Supply eUSX Liquidity (Exponent 16Sep26)',     mult:10, mint:'72AitxuVjN9LF88jMEMKX6NRqTufeJ9XRdtkj96UuKT2',  type:'LP', matTs: YT_MAT_TS_SEP },
+  { code:'S2_HOLD_USX_DAILY',            label:'Hold USX',        mult:10, mint:'6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG', type:'HOLD', matTs: null },
+  { code:'S2_HOLD_EUSX_DAILY',           label:'Hold eUSX',       mult:2,  mint:'3ThdFZQKM6kRyVGLG48kaPg5TRMhYMKY1iCRa9xop1WC', type:'HOLD', matTs: null },
+  { code:'S3_HOLD_JR_STRCUSX_DAILY',     label:'Hold JR strcUSX', mult:20, mint:'BQ6LPc68knpko292UsMLbQYfaHhWD7S84sA98632hrzX', type:'HOLD', matTs: null },
+  { code:'S3_HOLD_SR_STRCUSX_DAILY',     label:'Hold SR strcUSX', mult:15, mint:'3uZLfBgY9XaLXG7C2DDdVjQWgS9x9kEb9VLpfe4yED4P', type:'HOLD', matTs: null },
+  { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault',   mult:20, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP',   matTs: null },
+  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'Farm Variable USX Yield (Exponent 16Sep26)',  mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT', matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'Farm Variable eUSX Yield (Exponent 16Sep26)', mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT', matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_LP_USX_SEP26',     label:'Supply USX Liquidity (Exponent 16Sep26)',     mult:20, mint:'UPvchSL3aVFwaqVEQKJ3msSLfhKJe468DBPJYgWLNw5',  type:'LP', matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_LP_EUSX_SEP26',    label:'Supply eUSX Liquidity (Exponent 16Sep26)',    mult:10, mint:'72AitxuVjN9LF88jMEMKX6NRqTufeJ9XRdtkj96UuKT2', type:'LP', matTs: YT_MAT_TS_SEP },
+  { code:'S2_EXPONENT_LP_USX_DEC26',     label:'Supply USX Liquidity (Exponent 1Dec26)',      mult:22, mint:null, type:'LP', matTs: YT_MAT_TS_DEC },
+  { code:'S2_EXPONENT_LP_EUSX_DEC26',    label:'Supply eUSX Liquidity (Exponent 1Dec26)',     mult:10, mint:null, type:'LP', matTs: YT_MAT_TS_DEC },
 ];
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -493,7 +499,7 @@ let questMap  = {};     // code → { label, mult, type, mint, matTs }
 let mintToCode= {};     // mint → code
 let sysNow        = 0;
 let sysTotalUsers = 0;        // populated from /api/analytics
-let sysDaily  = 1_153_865_942;
+let sysDaily  = 200_000_000;   // S3 recent daily emission (late Sep 2026)
 let walletState = null; // populated after load
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -517,7 +523,7 @@ function daysUntilTs(ts) {
 
 // ── Quest data ────────────────────────────────────────────────────────────────
 async function loadQuests() {
-  const CK = 'analytiq_quests_v2';
+  const CK = 'analytiq_quests_s3_v1';
   try {
     const c = JSON.parse(localStorage.getItem(CK) || 'null');
     if (c && c.date === utcDate()) {
@@ -537,8 +543,8 @@ async function loadQuests() {
       }));
       // Patch known maturity timestamps for YT quests
       for (const q of out) {
-        if (q.code.includes('JUN26')) q.matTs = YT_MAT_TS;
         if (q.code.includes('SEP26')) q.matTs = YT_MAT_TS_SEP;
+        if (q.code.includes('DEC26')) q.matTs = YT_MAT_TS_DEC;
       }
       try { localStorage.setItem(CK, JSON.stringify({ date: utcDate(), quests: out })); } catch {}
       buildQuestMap(out);
@@ -550,8 +556,9 @@ async function loadQuests() {
   // QUEST_FALLBACK already includes LP quests with mints
 }
 
-// Add any QUEST_FALLBACK entries that aren't in questMap yet (patches LP quests
-// which the Solstice API returns with mint=null and we have mint addresses for).
+// Add any QUEST_FALLBACK entries that aren't in questMap yet: Exponent LP quests
+// (the API returns them with mint=null) and matured Sep26 quests that still
+// earned S3 flares before 2026-09-16.
 function supplementLpQuests() {
   for (const q of QUEST_FALLBACK) {
     if (!questMap[q.code]) buildQuestMap([q]);
@@ -567,7 +574,7 @@ function buildQuestMap(arr) {
 
 function getQuest(code) {
   return questMap[code] || {
-    code, label: code.replace(/^S2_/,'').replace(/_/g,' ').toLowerCase(), mult: 1, type: 'UNKNOWN', mint: null, matTs: null,
+    code, label: code.replace(/^S\d_/,'').replace(/_/g,' ').toLowerCase(), mult: 1, type: 'UNKNOWN', mint: null, matTs: null,
   };
 }
 
@@ -598,7 +605,7 @@ async function loadSystem() {
       }
     }
   } catch {}
-  if (!sysNow) sysNow = 45_826_314_643;
+  if (!sysNow) sysNow = 66_740_302_151;   // Solstice S3 total, 2026-09-25
 }
 
 // ── On-chain read ─────────────────────────────────────────────────────────────
@@ -627,8 +634,8 @@ async function fetchOnChain(addr) {
 }
 
 // ── On-chain historical walker ────────────────────────────────────────────────
-const SEASON_START_TS  = 1776056400;           // Apr 13 2026 05:00 UTC (Season 2 actual start)
-const OC_CACHE_PFX     = 'analytiq_oc_v4_';   // v4: Exponent farm positions
+const SEASON_START_TS  = 1785542400;           // Aug 1 2026 00:00 UTC (Season 3 start)
+const OC_CACHE_PFX     = 'analytiq_oc_s3_v1_'; // S3: walk from 2026-08-01
 const OC_CACHE_TTL     = 3600;                 // 1 hour
 const TOKEN_2022_PROG  = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 const EXPONENT_PROG    = 'ExponentnaRg3CQbW6dqQNZKXp7gtZ9DGMp1cwC4HAS7';
@@ -779,6 +786,31 @@ function readU64LE(bytes, offset) {
   return hi * 4294967296 + lo;
 }
 
+// Oldest signature on each position account (= account creation = stake time),
+// clamped to the season start. Missing entries fall back to season start.
+async function findStakeTimes(rpcUrl, pubkeys) {
+  const stakeTs = {};
+  await Promise.all(pubkeys.map(async pubkey => {
+    try {
+      let before;
+      let oldest = null;
+      while (true) {
+        const opts = { limit: 100, commitment: 'confirmed' };
+        if (before) opts.before = before;
+        const page = await rpcPost(rpcUrl, 'getSignaturesForAddress', [pubkey, opts]).catch(() => []);
+        if (!page?.length) break;
+        const last = page[page.length - 1];
+        if (last.blockTime) oldest = last.blockTime;
+        if (page.length < 100) break;
+        if (oldest && oldest < SEASON_START_TS - 86400) break; // far before season, stop
+        before = last.signature;
+      }
+      if (oldest) stakeTs[pubkey] = Math.max(oldest, SEASON_START_TS);
+    } catch {}
+  }));
+  return stakeTs;
+}
+
 // ── Exponent Finance: scan staked YT positions (YieldTokenPosition) ───────────
 // Layout: disc[0-7] | owner[8-39] | vault[40-71] | yt_balance_u64[72-79]
 // Vault layout: disc[0-7] | ... | mint_yt[72-103]
@@ -837,26 +869,7 @@ async function fetchExponentYtFarmPositions(addr, rpcUrl, questList) {
   // For each position, find the stake start time via the first signature on the
   // YieldTokenPosition account. This avoids over-counting flares when the user
   // staked well after season start.
-  const stakeTs = {};
-  await Promise.all(decoded.map(async ({ pubkey }) => {
-    try {
-      // Walk backward to find the oldest signature (= account creation = stake time)
-      let before;
-      let oldest = null;
-      while (true) {
-        const opts = { limit: 100, commitment: 'confirmed' };
-        if (before) opts.before = before;
-        const page = await rpcPost(rpcUrl, 'getSignaturesForAddress', [pubkey, opts]).catch(() => []);
-        if (!page?.length) break;
-        const last = page[page.length - 1];
-        if (last.blockTime) oldest = last.blockTime;
-        if (page.length < 100) break;
-        if (oldest && oldest < SEASON_START_TS - 86400) break; // far before season, stop
-        before = last.signature;
-      }
-      if (oldest) stakeTs[pubkey] = Math.max(oldest, SEASON_START_TS);
-    } catch {}
-  }));
+  const stakeTs = await findStakeTimes(rpcUrl, decoded.map(d => d.pubkey));
 
   const positions = [];
   const nowTs = Math.floor(Date.now() / 1000);
@@ -890,10 +903,10 @@ async function fetchExponentYtFarmPositions(addr, rpcUrl, questList) {
 // ── Exponent Finance: scan staked LP positions (LpPosition) ──────────────────
 // Layout: disc[0-7] | owner[8-39] | market[40-71] | lp_balance_u64[72-79]
 // To map market → quest, we read the market's vault and vault's mint_yt,
-// then look up the LP quest code (S2_EXPONENT_LP_*) via a static vault→LP-quest map.
+// then look up the LP quest code (*_EXPONENT_LP_*) via a YT-mint→LP-quest map:
+// static for matured markets, derived from the live YT quests for new ones
+// (S2_EXPONENT_YIELD_USX_DEC26 → S2_EXPONENT_LP_USX_DEC26).
 const EXP_YT_TO_LP_QUEST = {
-  'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s': 'S2_EXPONENT_LP_USX_JUN26',
-  'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw': 'S2_EXPONENT_LP_EUSX_JUN26',
   '47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS': 'S2_EXPONENT_LP_USX_SEP26',
   'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F': 'S2_EXPONENT_LP_EUSX_SEP26',
 };
@@ -902,8 +915,12 @@ const EXP_YT_TO_LP_QUEST = {
 async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
   // Build LP quest code → quest object
   const lpQuestByCode = {};
+  const ytToLp = { ...EXP_YT_TO_LP_QUEST };
   for (const q of questList) {
-    if (q.type === 'LP' && q.code.startsWith('S2_EXPONENT_LP_')) lpQuestByCode[q.code] = q;
+    if (q.type === 'LP' && /^S\d_EXPONENT_LP_/.test(q.code)) lpQuestByCode[q.code] = q;
+    if (q.type === 'YT' && q.mint && /^S\d_EXPONENT_YIELD_/.test(q.code)) {
+      ytToLp[q.mint] = ytToLp[q.mint] || q.code.replace('_YIELD_', '_LP_');
+    }
   }
   if (!Object.keys(lpQuestByCode).length) return [];
 
@@ -927,7 +944,7 @@ async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
 
   const decoded = raw.map(a => {
     const data = fromB64(a.account.data[0]);
-    return { market: b58Encode32(data.slice(40, 72)), lpBalance: readU64LE(data, 72) };
+    return { pubkey: a.pubkey, market: b58Encode32(data.slice(40, 72)), lpBalance: readU64LE(data, 72) };
   }).filter(p => p.lpBalance > 0);
 
   if (!decoded.length) return [];
@@ -967,22 +984,25 @@ async function fetchExponentLpFarmPositions(addr, rpcUrl, questList) {
     });
   }
 
+  const stakeTs = await findStakeTimes(rpcUrl, decoded.map(d => d.pubkey));
+
   const positions = [];
   const nowTs = Math.floor(Date.now() / 1000);
 
-  for (const { market, lpBalance } of decoded) {
+  for (const { pubkey, market, lpBalance } of decoded) {
     const vault  = marketToVault[market];
     if (!vault) continue;
     const mintYt = vaultToMintYt[vault];
     if (!mintYt) continue;
-    const lpQuestCode = EXP_YT_TO_LP_QUEST[mintYt];
+    const lpQuestCode = ytToLp[mintYt];
     if (!lpQuestCode) continue;
     const quest = lpQuestByCode[lpQuestCode];
     if (!quest) continue;
 
     const balance = lpBalance / 1e6;
-    const capTs  = quest.matTs ? Math.min(quest.matTs, nowTs) : nowTs;
-    const days   = Math.max(0, (capTs - SEASON_START_TS) / 86400);
+    const capTs   = quest.matTs ? Math.min(quest.matTs, nowTs) : nowTs;
+    const startTs = stakeTs[pubkey] ?? SEASON_START_TS;
+    const days    = Math.max(0, (capTs - startTs) / 86400);
 
     positions.push({
       code:      quest.code,
@@ -1146,6 +1166,7 @@ function clearOcCache(addr) {
   // Clear current and any legacy cache keys
   try {
     localStorage.removeItem(OC_CACHE_PFX + addr);
+    localStorage.removeItem('analytiq_oc_v4_' + addr);
     localStorage.removeItem('analytiq_oc_v3_' + addr);
     localStorage.removeItem('analytiq_oc_v2_' + addr);
     localStorage.removeItem('analytiq_oc_v1_' + addr);
@@ -1166,61 +1187,14 @@ async function loadDashboard(addr, forceRefresh = false) {
   setState('loading');
   setLoadingMsg('Loading…');
 
-  // ── Path A: Hanyon analytics index (primary) ──────────────────────────────
-  let walletJson = null;
-  try {
-    const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(addr)}.json`);
-    if (res.ok) walletJson = await res.json();
-    else if (res.status !== 404) throw new Error(`HTTP ${res.status}`);
-  } catch(e) {
-    // Network error — fall through to on-chain
-  }
-
-  if (walletJson) {
-    await loadQuests();
-
-    // On-chain balance enrichment (best-effort, for display only)
-    let onChainBals = null;
-    try { onChainBals = await fetchOnChain(addr); } catch {}
-
-    const emByQ = walletJson.daily_emission_by_quest || {};
-    const positions = [];
-    let totalDaily = 0;
-
-    for (const [code, daily] of Object.entries(emByQ)) {
-      if (!daily || daily <= 0) continue;
-      const q = getQuest(code);
-      totalDaily += daily;
-      let balance = null, balSource = 'est';
-      if (onChainBals && q.mint && onChainBals[q.mint]) {
-        balance = onChainBals[q.mint]; balSource = 'on-chain';
-      } else if (q.mult > 0) {
-        balance = daily / q.mult;
-      }
-      positions.push({ code, label: q.label, type: q.type, mult: q.mult, matTs: q.matTs, daily, balance, balSource });
-    }
-
-    positions.sort((a, b) => b.daily - a.daily);
-
-    const currentFlares = walletJson.total_flares ?? 0;
-    const loyaltyMult   = walletJson.loyalty_multiplier ?? 1.4;
-    const multSel = document.getElementById('proj-your-mult');
-    const opts = [1.4, 1.3, 1.2, 1.0];
-    multSel.value = String(opts.reduce((a, b) => Math.abs(b - loyaltyMult) < Math.abs(a - loyaltyMult) ? b : a));
-
-    walletState = { addr, currentFlares, loyaltyMult, positions, totalDaily, cachedTs: Date.now()/1000, sourceLabel: 'Hanyon index', fromCache: false };
-    render();
-    setState('dashboard');
-    return;
-  }
-
-  // ── Path B: on-chain walker (Hanyon 404 or unreachable) ───────────────────
-  setLoadingMsg('Wallet not in index yet — reading on-chain…', 'This may take a minute');
+  // ── On-chain walker ───────────────────────────────────────────────────────
+  // The Hanyon wallet index (s2.solstice.hanyon.app) only carries Season 2
+  // totals, so Season 3 is always walked from chain back to the S3 start.
+  setLoadingMsg('Reading on-chain…', 'This may take a minute');
   const rpc = getRpc();
   if (!rpc) {
-    setState('error', 'Wallet not indexed yet',
-      'This wallet hasn\'t been picked up by the analytics indexer yet. ' +
-      'Check back later or add a Helius RPC key in the sidebar to read directly from chain.');
+    setState('error', 'No RPC configured',
+      'Add a Helius RPC key in the Calculator sidebar to read this wallet from chain.');
     return;
   }
 
@@ -1231,9 +1205,9 @@ async function loadDashboard(addr, forceRefresh = false) {
     const result = await computeOnChainFlares(addr, rpc, questList);
 
     if (!result.positions.length) {
-      setState('error', 'No S2 positions found',
-        'No active Solstice S2 positions were detected on-chain for this wallet. ' +
-        'Make sure you hold USX, eUSX, YT, or LP tokens that qualify for S2 flares.');
+      setState('error', 'No S3 positions found',
+        'No active Solstice Season 3 positions were detected on-chain for this wallet. ' +
+        'Make sure you hold USX, eUSX, strcUSX, YT, or LP tokens that qualify for S3 flares.');
       return;
     }
 
@@ -1330,14 +1304,14 @@ function renderHero(addr, currentFlares, loyaltyMult, totalDaily) {
       <div class="hero-eyebrow">${isOnChain ? 'Accumulated flares (computed on-chain)' : 'Total accumulated flares'}</div>
       <div class="hero-num">${fmtShort(currentFlares)}<span class="hero-num-unit">flares</span></div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;">
-        <div class="hero-sub" style="margin-top:0">${fmt(currentFlares)} · Solstice Season 2 · ${utcDate()}</div>
+        <div class="hero-sub" style="margin-top:0">${fmt(currentFlares)} · Solstice Season 3 · ${utcDate()}</div>
         ${sysNow > 0 && currentFlares > 0 ? (() => {
           const share  = currentFlares / sysNow;
           const pct    = share * 100;
           const fmtPct = pct < 0.001 ? pct.toExponential(2) : pct < 0.01 ? pct.toFixed(4) : pct < 1 ? pct.toFixed(3) : pct.toFixed(2);
           const users  = sysTotalUsers > 0 ? ` of ${sysTotalUsers.toLocaleString()} users` : '';
-          return `<span style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#4ade80;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap;" title="Your flares as a share of all S2 flares distributed so far">
-            ${fmtPct}% of S2 flares${users}
+          return `<span style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#4ade80;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap;" title="Your flares as a share of all S3 flares distributed so far">
+            ${fmtPct}% of S3 flares${users}
           </span>`;
         })() : ''}
         ${(() => {
@@ -1504,7 +1478,7 @@ function renderCountdown() {
   const strip = document.getElementById('countdown-strip');
   if (!strip) return;
   const daysLeft   = daysUntil(SEASON_END);
-  const seasonStart = new Date('2026-04-13T05:00:00.000Z');
+  const seasonStart = new Date(SEASON_START_TS * 1000);
   const seasonEnd   = new Date(SEASON_END + 'T00:00:00Z');
   const pct = Math.min(100, Math.max(0,
     (Date.now() - seasonStart) / (seasonEnd - seasonStart) * 100));
@@ -1601,7 +1575,7 @@ function renderShareCardContent() {
 
   document.getElementById('share-card-content').innerHTML = `
     <div class="share-card">
-      <div class="sc-brand">AnalytiQ · Solstice S2 Tracker</div>
+      <div class="sc-brand">AnalytiQ · Solstice S3 Tracker</div>
       <div class="sc-addr">${shorten(addr)}</div>
       <span class="sc-big">${fmtShort(currentFlares)}</span><span class="sc-unit">flares</span>
       <div class="sc-stats">
@@ -1690,12 +1664,9 @@ async function copyCardAsImage() {
 // ── Position optimizer ────────────────────────────────────────────────────────
 // Each "from" position gets a list of candidate upgrades; best effDays wins
 const UPGRADE_CANDIDATES = [
-  { fromCode:'S2_HOLD_USX_DAILY',         toLabel:'YT USX Sep26',  toMult:30, matTs:YT_MAT_TS_SEP, icon:'⚡' },
-  { fromCode:'S2_HOLD_USX_DAILY',         toLabel:'YT USX Jun26',  toMult:30, matTs:YT_MAT_TS,     icon:'⚡' },
-  { fromCode:'S2_HOLD_EUSX_DAILY',        toLabel:'YT eUSX Sep26', toMult:15, matTs:YT_MAT_TS_SEP, icon:'⚡' },
-  { fromCode:'S2_HOLD_EUSX_DAILY',        toLabel:'YT eUSX Jun26', toMult:15, matTs:YT_MAT_TS,     icon:'⚡' },
-  { fromCode:'S2_KAMINO_KVAULT_USDG_USX', toLabel:'YT USX Sep26',  toMult:30, matTs:YT_MAT_TS_SEP, icon:'🔄' },
-  { fromCode:'S2_KAMINO_KVAULT_USDG_USX', toLabel:'YT USX Jun26',  toMult:30, matTs:YT_MAT_TS,     icon:'🔄' },
+  { fromCode:'S2_HOLD_USX_DAILY',         toLabel:'YT USX Dec26',  toMult:32, matTs:YT_MAT_TS_DEC, icon:'⚡' },
+  { fromCode:'S2_HOLD_EUSX_DAILY',        toLabel:'YT eUSX Dec26', toMult:15, matTs:YT_MAT_TS_DEC, icon:'⚡' },
+  { fromCode:'S2_KAMINO_KVAULT_USDG_USX', toLabel:'YT USX Dec26',  toMult:32, matTs:YT_MAT_TS_DEC, icon:'🔄' },
 ];
 function renderOptimizer() {
   const sec  = document.getElementById('opt-section');
@@ -1736,17 +1707,17 @@ function renderOptimizer() {
   // No YT positions at all → general tip
   const hasYT = positions.some(p => p.type==='YT');
   if (!hasYT) {
-    const effDays = Math.min(daysLeft, daysUntilTs(YT_MAT_TS));
+    const effDays = Math.min(daysLeft, daysUntilTs(YT_MAT_TS_DEC));
     const biggest = positions.reduce((a,b) => b.daily>a.daily ? b : a, positions[0]);
     if (biggest && effDays > 7) {
-      const hypoDaily = biggest.daily / biggest.mult * 30;
+      const hypoDaily = biggest.daily / biggest.mult * 32;
       const dailyGain = hypoDaily - biggest.daily;
       const totalGain = dailyGain * effDays;
       const addlSlx   = sysEnd > 0 ? (totalGain / sysEnd) * multRatio * SLX_SUPPLY * AIRDROP_PCT : 0;
       suggestions.push({
         icon:'💡',
         title:'Consider YT positions (highest multiplier)',
-        desc:`YT USX Jun26 carries a <strong>30× flare multiplier</strong> — the highest in S2. Equivalent capital in a YT position would earn ~${(30/biggest.mult).toFixed(1)}× more flares than your current top position (${biggest.label} at ${biggest.mult}×).`,
+        desc:`YT USX Dec26 carries a <strong>32× flare multiplier</strong> — the highest in S3. Equivalent capital in a YT position would earn ~${(32/biggest.mult).toFixed(1)}× more flares than your current top position (${biggest.label} at ${biggest.mult}×).`,
         gainPerDay: dailyGain, addlSlx,
       });
     }
@@ -1765,14 +1736,14 @@ function renderOptimizer() {
     suggestions.push({
       icon:'🔒',
       title:`Maximize loyalty multiplier (${loyaltyMult.toFixed(1)}× → 1.4×)`,
-      desc:`Your loyalty is <strong>${loyaltyMult.toFixed(1)}×</strong>. Reaching <strong>1.4×</strong> (retain ≥100% of S1 TVL) boosts your effective share by <strong>${((1.4/loyaltyMult-1)*100).toFixed(0)}%</strong> with no new capital required.`,
+      desc:`Your loyalty is <strong>${loyaltyMult.toFixed(1)}×</strong>. Reaching <strong>1.4×</strong> (retain ≥100% of your S2 TVL) boosts your effective share by <strong>${((1.4/loyaltyMult-1)*100).toFixed(0)}%</strong> with no new capital required.`,
       gainPerDay: null, addlSlx,
     });
   }
 
   if (!suggestions.length) {
     sec.style.display='';
-    grid.innerHTML=`<div class="opt-empty">✅ Your positions look well-optimized for current S2 quests.</div>`;
+    grid.innerHTML=`<div class="opt-empty">✅ Your positions look well-optimized for current S3 quests.</div>`;
     return;
   }
   suggestions.sort((a,b)=>b.addlSlx-a.addlSlx);

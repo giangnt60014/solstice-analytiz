@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Solstice S2 Calculator</title>
+<title>Solstice S3 Calculator</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -463,7 +463,7 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
   <a class="header-brand" href="#">
     <img src="favicon.svg" width="22" height="22" alt="" style="border-radius:5px;">
     Solstice
-    <span class="header-badge">S2</span>
+    <span class="header-badge">S3</span>
   </a>
   <nav class="header-nav">
     <a href="#">Dashboard</a>
@@ -521,7 +521,7 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
       </div>
       <div class="s-field">
         <label class="s-label" for="calc-end">Season end date</label>
-        <input id="calc-end" type="date" class="s-input" value="2026-08-01" min="2026-04-13" max="2026-12-31" onchange="onEndDateChange()">
+        <input id="calc-end" type="date" class="s-input" value="2026-12-01" min="2026-08-01" max="2026-12-01" onchange="onEndDateChange()">
       </div>
     </div>
 
@@ -530,10 +530,9 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
       <div class="s-field">
         <label class="s-label" for="calc-your-mult">Your loyalty multiplier</label>
         <select id="calc-your-mult" class="s-select" onchange="onAnyInput()">
-          <option value="1.4">1.4× — Full Loyalty (TVL ≥ 100%)</option>
-          <option value="1.3">1.3× — Reduced (50–99%)</option>
-          <option value="1.2">1.2× — Minimum (20–49%)</option>
-          <option value="1.0">1.0× — No multiplier</option>
+          <option value="1.4">1.4× — Full Loyalty (≥ 100% of S2 TVL)</option>
+          <option value="1.3">1.3× — Reduced (50–99% of S2 TVL)</option>
+          <option value="1.0">1.0× — No multiplier (&lt; 50% / newcomer)</option>
         </select>
       </div>
       <div class="s-field">
@@ -547,10 +546,11 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
         </select>
       </div>
       <div class="s-field">
-        <label class="s-label" for="calc-airdrop-pct">S2 SLX allocation</label>
+        <label class="s-label" for="calc-airdrop-pct">S3 SLX allocation (unannounced)</label>
         <select id="calc-airdrop-pct" class="s-select" onchange="onAnyInput()">
-          <option value="0.03" selected>3.00% — 30M SLX (anchor)</option>
-          <option value="0.0325">3.25% — 32.5M SLX (rumored)</option>
+          <option value="0.02">2.00% — 20M SLX (downside)</option>
+          <option value="0.025">2.50% — 25M SLX</option>
+          <option value="0.03" selected>3.00% — 30M SLX (S2 anchor)</option>
           <option value="0.035">3.50% — 35M SLX (upside)</option>
         </select>
       </div>
@@ -601,7 +601,7 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
     <div class="yt-projector" style="margin-bottom:24px;">
       <div class="yt-intro">
         Buying YT tokens on <a href="https://app.exponent.finance" target="_blank" rel="noopener">Exponent Finance</a>
-        earns flares on your full notional at a high multiplier — great for boosting your S2 share before season end.
+        earns flares on your full notional at a high multiplier — great for boosting your S3 share before season end.
         Enter a deposit to project your earnings.
       </div>
 
@@ -615,8 +615,8 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
         <div class="yt-input-group">
           <label class="yt-input-label" for="yt-market">YT market</label>
           <select id="yt-market" class="yt-select" onchange="ytMarketChange()">
-            <option value="0">YT-USX Sep26 — 45× boost → 30×</option>
-            <option value="1">YT-eUSX Sep26 — 22.5× boost → 15×</option>
+            <option value="0">YT-USX Dec26 — 32×</option>
+            <option value="1">YT-eUSX Dec26 — 15×</option>
           </select>
         </div>
         <div class="yt-input-group">
@@ -640,7 +640,7 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
             <div class="yt-out-sub" id="yt-out-phase">—</div>
           </div>
           <div class="yt-out-item is-total">
-            <div class="yt-out-label">Total to S2 end</div>
+            <div class="yt-out-label">Total to S3 end</div>
             <div class="yt-out-val amber" id="yt-out-total">—</div>
             <button class="yt-use-btn" id="yt-use-btn" onclick="ytUseInCalc()">Use in calc ↓</button>
           </div>
@@ -706,7 +706,7 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
           </div>
         </div>
         <div style="text-align:center;margin-top:8px">
-          <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">S2 Flares</div>
+          <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">S3 Flares</div>
           <div style="font-size:11px;font-weight:700;color:var(--text-2)" id="calc-you-mini"></div>
         </div>
       </div>
@@ -737,7 +737,7 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
       <div class="mission-stat">
         <div class="ms-label">📡 Network share</div>
         <div class="ms-val orange" id="calc-share-2">0.0000%</div>
-        <div class="ms-sub">of total S2 flares</div>
+        <div class="ms-sub">of total S3 flares</div>
       </div>
     </div>
 
@@ -761,14 +761,16 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
     <div class="notes-box">
       <strong>System projection:</strong> The "system total at end date" is auto-projected from Solstice's live published total plus the 7-day average daily emission rate. Changing the end date recalculates this in real time.
       <br><br>
-      <strong>SLX allocation:</strong> Current docs anchor is 3% of total supply (30M SLX). Rumored bumps to 3.25%–3.5% if Dynamic Distribution activates based on TVL thresholds.
+      <strong>SLX allocation:</strong> Solstice has not announced the Season 3 allocation (the campaign publishes a 7.5%-of-supply base across all seasons). The 3% default is what S2 settled at — a familiar anchor, not a forecast. Outputs scale linearly with it.
       <br><br>
-      <strong>Loyalty multiplier:</strong> Applied once at S2 end based on retained TVL vs your S1 TWA baseline. If your 1.4× exceeds the network average (e.g. 1.2×), your effective share grows by ≈1.4÷1.2 = 17%. If everyone holds the same multiplier, it cancels out in the ratio.
+      <strong>Season 3:</strong> Runs 2026-08-01 → 2026-12-01. Main quests: Hold USX 10×, Hold eUSX 2×, Hold JR strcUSX 20×, Hold SR strcUSX 15×, Exponent Dec26 YT (USX 32×, eUSX 15×) and LP (USX 22×, eUSX 10×), Orca/Raydium USX pools up to 20×, Kamino kVault 20×.
+      <br><br>
+      <strong>Loyalty multiplier:</strong> Applied once at S3 end based on retained TVL vs your S2 position: ≥100% → 1.4×, 50–99% → 1.3×, below 50% → removed. Newcomers get their own boost instead. If your 1.4× exceeds the network average (e.g. 1.2×), your effective share grows by ≈1.4÷1.2 = 17%. If everyone holds the same multiplier, it cancels out in the ratio.
       <div class="notes-meta">
         <span class="notes-tag">Data: Solstice official API</span>
         <span class="notes-tag">Cached 24h per UTC day</span>
         <span class="notes-tag">1B SLX total supply</span>
-        <span class="notes-tag">Season ends 2026-08-01</span>
+        <span class="notes-tag">Season ends 2026-12-01</span>
       </div>
     </div>
 
@@ -779,10 +781,13 @@ input[type=range].fdv-range:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px 
 
 <script>
 const SLX_TOTAL_SUPPLY = 1_000_000_000;
-const S2_AIRDROP_PCT   = 0.03;
+// S3 allocation is unannounced; 3% is what S2 settled at, used as an anchor only.
+const S3_AIRDROP_PCT   = 0.03;
 const FDV_SCENARIOS_M  = [30, 50, 100, 150, 200, 300, 400, 500];
-const YT_MATURITY_TS   = 1780318699;
-const YT_QUESTS        = new Set(['S2_EXPONENT_YIELD_USX_JUN26', 'S2_EXPONENT_YIELD_EUSX_JUN26']);
+// Season 3: 2026-08-01 00:00 UTC → 2026-12-01 00:00 UTC.
+const SEASON_END_ISO   = '2026-12-01';
+// Exponent Dec26 markets (usx-01DEC26) mature on the same day S3 ends.
+const YT_MATURITY_TS   = 1796083200;
 
 let DAILY = null, DATA = null, WALLET_CONTEXT = null;
 
@@ -820,7 +825,7 @@ function onEndDateChange() {
 
 function refreshUserProjection() {
   if (!WALLET_CONTEXT) return;
-  const endIso = document.getElementById('calc-end').value||'2026-08-01';
+  const endIso = document.getElementById('calc-end').value||SEASON_END_ISO;
   const today  = new Date(); today.setUTCHours(0,0,0,0);
   const todayTs = Math.floor(today.getTime()/1000);
   const daysToMat = Math.max(0,(YT_MATURITY_TS-todayTs)/86400);
@@ -847,14 +852,14 @@ function computeSystemTotalAtEnd(daysAhead) {
       const d=recent[i].inflation;
       if (d>0&&d<2.5e9) deltas.push(d);
     }
-    const avgD = deltas.length ? deltas.reduce((a,b)=>a+b,0)/deltas.length : 1.18e9;
+    const avgD = deltas.length ? deltas.reduce((a,b)=>a+b,0)/deltas.length : FALLBACK_DAILY_AVG;
     return { sysNow, avgD, total: sysNow+avgD*daysAhead, dCount: deltas.length };
   }
-  return { sysNow: 0, avgD: 1.15e9, total: 0, dCount: 0 };
+  return { sysNow: 0, avgD: FALLBACK_DAILY_AVG, total: 0, dCount: 0 };
 }
 
 function refreshSysProjection() {
-  const endIso = document.getElementById('calc-end').value||'2026-08-01';
+  const endIso = document.getElementById('calc-end').value||SEASON_END_ISO;
   const today  = new Date(); today.setUTCHours(0,0,0,0);
   const end    = new Date(endIso+'T00:00:00Z');
   const days   = Math.max(0,Math.round((end-today)/86400000));
@@ -1048,7 +1053,7 @@ function startLiveTicker(base, dailyRate) {
 function renderResults() {
   const userTotal  = parseAmount(document.getElementById('calc-total').value)||0;
   const sysTotal   = parseAmount(document.getElementById('calc-sys-total').value)||0;
-  const endIso     = document.getElementById('calc-end').value||'2026-08-01';
+  const endIso     = document.getElementById('calc-end').value||SEASON_END_ISO;
   const today      = new Date(); today.setUTCHours(0,0,0,0);
   const end        = new Date(endIso+'T00:00:00Z');
   const days       = Math.max(0,Math.round((end-today)/86400000));
@@ -1057,7 +1062,7 @@ function renderResults() {
   const multRatio  = avgMult>0 ? yourMult/avgMult : 1;
   const rawShare   = sysTotal>0 ? userTotal/sysTotal : 0;
   const share      = rawShare*multRatio;
-  const airdropPct = parseFloat(document.getElementById('calc-airdrop-pct').value)||S2_AIRDROP_PCT;
+  const airdropPct = parseFloat(document.getElementById('calc-airdrop-pct').value)||S3_AIRDROP_PCT;
   const slx        = share*SLX_TOTAL_SUPPLY*airdropPct;
   const boostNote  = yourMult!==avgMult ? ` × ${yourMult}/${avgMult}` : '';
 
@@ -1102,18 +1107,18 @@ function renderResults() {
 }
 
 // ── Quest data ──────────────────────────────────────────────────────────────
-// Hardcoded snapshot from app.solstice.finance/api/flares/quests (2026-05-30).
-// Only includes quests readable from standard wallet token accounts.
+// Season 3 snapshot of app.solstice.finance/api/flares/quests (2026-09-25).
+// Solstice kept the S2_ prefix on quests carried into S3. Only includes quests
+// readable from standard wallet token accounts. Exponent Dec26 YT mints come
+// from the live API (not hardcoded here).
 const QUEST_FALLBACK = [
-  { code:'S2_EXPONENT_YIELD_USX_JUN26',  label:'YT USX Jun26',   mult:30, mint:'Au8g11nXqXrUAmL14GM3gQnrnJnr4dcpgc5DNAnu9F9s', type:'YT'   },
-  { code:'S2_EXPONENT_YIELD_EUSX_JUN26', label:'YT eUSX Jun26',  mult:15, mint:'GEYwnvNzqFXrLnNq4riXbn2ASnwU3cF8RXW6wXKHM4sw', type:'YT'   },
-  { code:'S2_EXPONENT_YIELD_USX_SEP26',  label:'YT USX Sep26',   mult:30, mint:'47gQiyWpVd13mmAFXemW1wVTd2e2GYKq5bLrdRXUfxsS', type:'YT'   },
-  { code:'S2_EXPONENT_YIELD_EUSX_SEP26', label:'YT eUSX Sep26',  mult:15, mint:'BKvVBAWWLB77yAbhm2Ctd62ewZ8yEvGXsZowBhDLKM6F', type:'YT'   },
   { code:'S2_HOLD_USX_DAILY',            label:'Hold USX',       mult:10, mint:'6FrrzDk5mQARGc1TDYoyVnSyRdds1t4PbtohCD6p3tgG', type:'HOLD' },
   { code:'S2_HOLD_EUSX_DAILY',           label:'Hold eUSX',      mult:2,  mint:'3ThdFZQKM6kRyVGLG48kaPg5TRMhYMKY1iCRa9xop1WC', type:'HOLD' },
-  { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault',  mult:10, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP'   },
+  { code:'S3_HOLD_JR_STRCUSX_DAILY',     label:'Hold JR strcUSX', mult:20, mint:'BQ6LPc68knpko292UsMLbQYfaHhWD7S84sA98632hrzX', type:'HOLD' },
+  { code:'S3_HOLD_SR_STRCUSX_DAILY',     label:'Hold SR strcUSX', mult:15, mint:'3uZLfBgY9XaLXG7C2DDdVjQWgS9x9kEb9VLpfe4yED4P', type:'HOLD' },
+  { code:'S2_KAMINO_KVAULT_USDG_USX',    label:'Kamino kVault',  mult:20, mint:'4qkStdH1NPKMmxrTDbY8kzTkJorpGMd8GLxo81drv9Jz', type:'LP'   },
 ];
-const QUEST_CACHE_KEY = 'analytiq_quests_v1';
+const QUEST_CACHE_KEY = 'analytiq_quests_s3_v1';
 
 async function fetchQuests() {
   try {
@@ -1256,41 +1261,19 @@ async function calcLoadWallet() {
 
   btn.textContent='Loading…'; btn.disabled=true;
 
-  // ── Primary: Hanyon analytics index ──────────────────────────────────────
-  srcEl.textContent = 'Loading…';
-  let hanyonOk = false;
-  try {
-    const res = await fetch(`https://s2.solstice.hanyon.app/wallets/${encodeURIComponent(raw)}.json`);
-    if (res.ok) {
-      const json = await res.json();
-      let yt = 0, nonyt = 0;
-      for (const [q, v] of Object.entries(json.daily_emission_by_quest || {})) {
-        if (!v) continue;
-        if (YT_QUESTS.has(q)) yt += v; else nonyt += v;
-      }
-      WALLET_CONTEXT = {
-        current_flares: json.total_flares ?? 0,
-        yt_daily: yt, nonyt_daily: nonyt,
-      };
-      refreshUserProjection();
-      srcEl.innerHTML = `Data loaded · ${fmt(WALLET_CONTEXT.current_flares)} flares today · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
-      renderResults();
-      hanyonOk = true;
-    }
-  } catch(_) {}
-
-  if (hanyonOk) { btn.textContent='Load Wallet'; btn.disabled=false; return; }
-
-  // ── Fallback: on-chain via Helius RPC (when wallet not yet in index) ──────
-  srcEl.textContent = 'Not in index yet — reading on-chain…';
+  // ── On-chain via Helius RPC ──────────────────────────────────────────────
+  // The Hanyon wallet index (s2.solstice.hanyon.app) only carries Season 2
+  // totals, so S3 reads live balances and projects forward from today. The
+  // full dashboard walks balance history back to the S3 start for the total.
+  srcEl.textContent = 'Reading on-chain…';
   if (getRpcEndpoint()) {
     try {
       const { dailyTotal, breakdown } = await readWalletOnChain(raw);
 
       if (breakdown.length === 0) {
-        srcEl.textContent = 'No S2 positions found — enter flares manually.';
+        srcEl.textContent = 'No S3 positions found — enter flares manually.';
       } else {
-        const endIso = document.getElementById('calc-end').value || '2026-08-01';
+        const endIso = document.getElementById('calc-end').value || SEASON_END_ISO;
         const today  = new Date(); today.setUTCHours(0,0,0,0);
         const end    = new Date(endIso + 'T00:00:00Z');
         const days   = Math.max(0, Math.round((end - today) / 86400000));
@@ -1303,7 +1286,7 @@ async function calcLoadWallet() {
         WALLET_CONTEXT = { current_flares: 0, yt_daily: ytDaily, nonyt_daily: nonytDaily };
         document.getElementById('calc-total').value = fmt(projected);
         document.getElementById('calc-prefill-hint').textContent =
-          `${fmt(dailyTotal)}/day × ${days}d projected (no historical total — add manually if known)`;
+          `${fmt(dailyTotal)}/day × ${days}d projected — add your current S3 flares (see Full Dashboard or the Solstice app)`;
         showBreakdown(dailyTotal, breakdown);
         srcEl.innerHTML = `${breakdown.length} position${breakdown.length!==1?'s':''} found on-chain · <a href="wallet.html?addr=${encodeURIComponent(raw)}" style="color:rgba(124,106,247,.9);text-decoration:none;font-weight:700;">Full Dashboard ↗</a>`;
         renderResults();
@@ -1314,19 +1297,21 @@ async function calcLoadWallet() {
   }
 
   WALLET_CONTEXT = null;
-  errEl.innerHTML = 'Wallet not in analytics index yet — enter flares manually above.';
+  errEl.innerHTML = 'Could not read this wallet on-chain — enter flares manually above.';
   errEl.style.display = 'block';
   srcEl.textContent = '';
   btn.textContent='Load Wallet'; btn.disabled=false;
 }
 
 // ── YT Projector ─────────────────────────────────────────────────────────────
-const YT_MAT_TS_SEP26  = 1790956800;  // ~Sep–Oct 2026
-const YT_BOOST_END_TS  = 1780358400;  // Jun 2, 2026 00:00 UTC
+const YT_MAT_TS_DEC26  = YT_MATURITY_TS;  // 2026-12-01 — also S3 end
+// S2's +50% Sep26 launch boost ended 2026-05-29; S3's Dec26 markets are quoted
+// at their live multipliers, so boost == base (no split).
+const YT_BOOST_END_TS  = 1780012800;
 
 const YT_MARKETS_LIST = [
-  { label:'YT-USX Sep26',   matTs:YT_MAT_TS_SEP26, boostMult:45,   baseMult:30, defApy:7.42 },
-  { label:'YT-eUSX Sep26',  matTs:YT_MAT_TS_SEP26, boostMult:22.5, baseMult:15, defApy:4.50 },
+  { label:'YT-USX Dec26',   matTs:YT_MAT_TS_DEC26, boostMult:32, baseMult:32, defApy:7.42 },
+  { label:'YT-eUSX Dec26',  matTs:YT_MAT_TS_DEC26, boostMult:15, baseMult:15, defApy:4.50 },
 ];
 
 let _ytTotalFlares = 0;
@@ -1380,7 +1365,7 @@ function calcYtProjection() {
   }
 
   const ytBal      = ytPrice > 0 ? deposit / ytPrice : 0;
-  const endIso     = document.getElementById('calc-end').value || '2026-08-01';
+  const endIso     = document.getElementById('calc-end').value || SEASON_END_ISO;
   const endTs      = Math.floor(new Date(endIso+'T00:00:00Z').getTime()/1000);
   const capTs      = Math.min(endTs, m.matTs);
   const seasonSecs = Math.max(0, capTs - nowTs);
@@ -1421,7 +1406,7 @@ function renderYtFdvTable(deposit, totalFlares) {
   const sysTotal   = parseAmount(document.getElementById('calc-sys-total').value)||1;
   const yourMult   = parseFloat(document.getElementById('calc-your-mult').value)||1;
   const avgMult    = parseFloat(document.getElementById('calc-avg-mult').value)||1;
-  const airdropPct = parseFloat(document.getElementById('calc-airdrop-pct').value)||S2_AIRDROP_PCT;
+  const airdropPct = parseFloat(document.getElementById('calc-airdrop-pct').value)||S3_AIRDROP_PCT;
   const share      = (totalFlares / sysTotal) * (yourMult / avgMult);
   const slx        = share * SLX_TOTAL_SUPPLY * airdropPct;
 
@@ -1476,7 +1461,7 @@ function ytUseInCalc() {
 }
 
 // ── Cache helpers ──
-const CACHE_KEY = 'analytiq_daily_v1';
+const CACHE_KEY = 'analytiq_daily_s3_v1';
 function utcDateStr() { return new Date().toISOString().slice(0,10); }
 function readCache() {
   try {
@@ -1488,8 +1473,10 @@ function writeCache(daily,data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({date:utcDateStr(),daily,data})); } catch {}
 }
 
-const FALLBACK_SYS_NOW   = 45_826_314_643;
-const FALLBACK_DAILY_AVG = 1_153_865_942;
+// Solstice S3 published total on 2026-09-25 and the recent daily emission
+// (~195M–200M/day since the 1MO/3MO lock quests and Sep26 markets ended).
+const FALLBACK_SYS_NOW   = 66_740_302_151;
+const FALLBACK_DAILY_AVG = 200_000_000;
 
 function applyFallback() {
   const today = new Date(); today.setUTCHours(0,0,0,0);
@@ -1543,7 +1530,7 @@ function applyFallback() {
 
   // Start live system ticker after we know the daily rate
   const { sysNow: sBase, avgD: sRate } = computeSystemTotalAtEnd(0);
-  if (sBase > 0) startLiveTicker(sBase, sRate > 0 ? sRate : 1_153_865_942);
+  if (sBase > 0) startLiveTicker(sBase, sRate > 0 ? sRate : FALLBACK_DAILY_AVG);
 
   // Auto-fill wallet from ?wallet= URL param (linked from wallet dashboard)
   const walletParam = new URLSearchParams(location.search).get('wallet') || '';
